@@ -3,7 +3,7 @@ CREATE TABLE "users" (
   "username" varchar UNIQUE NOT NULL,
   "email" varchar UNIQUE NOT NULL,
   "role" varchar NOT NULL DEFAULT 'student',
-  "registered_at" timestamp NOT NULL DEFAULT 'now()'
+  "registered_at" date NOT NULL DEFAULT current_date
 );
 
 CREATE TABLE "users_courses" (
@@ -28,7 +28,8 @@ CREATE TABLE "users_tasks" (
 
 CREATE TABLE "courses" (
   "id" uuid PRIMARY KEY,
-  "name" varchar NOT NULL,
+  "name" varchar UNIQUE NOT NULL,
+  "creator_id" uuid,
   "description" varchar,
   "created_at" timestamp NOT NULL DEFAULT 'now()',
   "last_modified_at" timestamp NOT NULL DEFAULT 'now()'
@@ -81,7 +82,7 @@ CREATE TABLE "tasks" (
 
 ALTER TABLE "users_courses" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
 
-ALTER TABLE "courses" ADD FOREIGN KEY ("id") REFERENCES "users" ("id");
+ALTER TABLE "courses" ADD FOREIGN KEY ("creator_id") REFERENCES "users" ("id");
 
 ALTER TABLE "users_lessons" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
 
