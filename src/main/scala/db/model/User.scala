@@ -49,19 +49,11 @@ class UserRepositoryImpl(db: Database, profile: JdbcProfile) extends UserReposit
   import table.userQuery
 
   override def add(user: User): Future[Int] = db.run {
-    sqlu"""
-          insert into users values (${user.id}, ${user.username}, ${user.email}, ${user.role}, ${user.registeredAt})
-        """
+    userQuery += user
   }
 
   override def update(user: User): Future[Int] = db.run {
-    sqlu"""
-          update users set
-          username = ${user.username},
-          email = ${user.email},
-          role = ${user.role}
-          where id = ${user.id}
-        """
+    userQuery.filter(_.id === user.id).map(u => (u.username, u.email, u.role)).update((user.username, user.email, user.role))
   }
 
   override def getById(uuid: UUID): Future[Option[User]] = db.run {

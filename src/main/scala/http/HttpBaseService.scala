@@ -13,7 +13,7 @@ import scala.util.{Failure, Success}
 trait HttpBaseService {
   this: HttpRoute =>
 
-  private val routes = mutable.MutableList[Route]()
+  private val routes = mutable.ArrayBuffer[Route]()
 
   override lazy val route: Route = {
     if (routes.nonEmpty) {
