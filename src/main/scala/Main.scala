@@ -1,7 +1,9 @@
+import db.DbServiceImpl
 
 object Main {
 
   def main(args: Array[String]): Unit = {
-    println("Hello world!")
+    val service = new DbServiceImpl()
+    service.insertUser()
   }
 }

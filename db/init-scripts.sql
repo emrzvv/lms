@@ -6,11 +6,23 @@ CREATE TABLE "users" (
   "registered_at" date NOT NULL DEFAULT current_date
 );
 
+CREATE TABLE "courses" (
+  "id" uuid PRIMARY KEY,
+  "name" varchar UNIQUE NOT NULL,
+  "creator_id" uuid,
+  "description" varchar,
+  "created_at" timestamp NOT NULL DEFAULT 'now()',
+  "last_modified_at" timestamp NOT NULL DEFAULT 'now()'
+);
+
 CREATE TABLE "users_courses" (
-  "user_id" uuid,
-  "course_id" uuid,
+  "user_id" uuid NOT NULL,
+  "course_id" uuid NOT NULL,
   "rating" integer,
-  PRIMARY KEY ("user_id", "course_id")
+
+  CONSTRAINT "fk_user_id" FOREIGN KEY ("user_id") REFERENCES "users"("id"),
+  CONSTRAINT "fk_course_id" FOREIGN KEY ("course_id") REFERENCES "courses"("id"),
+  CONSTRAINT "pk_user_course" PRIMARY KEY ("user_id", "course_id")
 );
 
 CREATE TABLE "users_lessons" (
@@ -24,15 +36,6 @@ CREATE TABLE "users_tasks" (
   "task_id" uuid,
   "answer" varchar,
   PRIMARY KEY ("user_id", "task_id")
-);
-
-CREATE TABLE "courses" (
-  "id" uuid PRIMARY KEY,
-  "name" varchar UNIQUE NOT NULL,
-  "creator_id" uuid,
-  "description" varchar,
-  "created_at" timestamp NOT NULL DEFAULT 'now()',
-  "last_modified_at" timestamp NOT NULL DEFAULT 'now()'
 );
 
 CREATE TABLE "categories" (
@@ -80,15 +83,12 @@ CREATE TABLE "tasks" (
   "question" varchar
 );
 
-ALTER TABLE "users_courses" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
-
 ALTER TABLE "courses" ADD FOREIGN KEY ("creator_id") REFERENCES "users" ("id");
 
 ALTER TABLE "users_lessons" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
 
 ALTER TABLE "users_tasks" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
 
-ALTER TABLE "users_courses" ADD FOREIGN KEY ("course_id") REFERENCES "courses" ("id");
 
 ALTER TABLE "modules" ADD FOREIGN KEY ("id") REFERENCES "courses" ("id");
 

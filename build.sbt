@@ -7,10 +7,21 @@ lazy val root = (project in file("."))
     name := "lms"
   )
 
+resolvers += "Akka library repository".at("https://repo.akka.io/maven")
+
+val AkkaVersion = "2.9.2"
+val AkkaHttpVersion = "10.6.2"
+
 libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick" % "3.5.0",
   "org.postgresql" % "postgresql" % "42.7.3",
   "com.typesafe.slick" %% "slick-hikaricp" % "3.5.1",
   "com.github.tminglei" %% "slick-pg" % "0.22.1",
-  "com.github.tminglei" %% "slick-pg_play-json" % "0.22.1"
+  "com.github.tminglei" %% "slick-pg_play-json" % "0.22.1",
+  "com.typesafe.akka" %% "akka-actor-typed" % AkkaVersion,
+  "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
+  "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
+  "ch.qos.logback"     % "logback-classic" % "1.5.6"
 )
+
+enablePlugins(SbtTwirl)
