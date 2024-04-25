@@ -4,7 +4,10 @@ import akka.http.scaladsl.server.Directives._
 import component.{ActorSystemComponent, Repositories}
 import db.model.User
 import http.HttpBaseService
+import org.mdedetrich.akka.http.WebJarsSupport.webJars
+import play.twirl.api.Html
 import utils.Serializers
+import views.html.home
 
 // GET /user/<uuid>
 // POST /user
@@ -15,6 +18,10 @@ import utils.Serializers
 trait UserService {
   this: Repositories with HttpBaseService with ActorSystemComponent with Serializers =>
 
+  registerRoute(pathPrefix("webjars") {
+    webJars
+  })
+
   registerRoute(pathPrefix("user") {
     concat(
       path(JavaUUID) { uuid =>
@@ -23,5 +30,11 @@ trait UserService {
         }
       }
     )
+  })
+
+  registerRoute(pathSingleSlash {
+    get {
+      complete(home())
+    }
   })
 }

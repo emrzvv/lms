@@ -1,9 +1,10 @@
 package http
 
-import akka.http.scaladsl.marshalling.ToEntityMarshaller
-import akka.http.scaladsl.model.{StatusCode, StatusCodes}
+import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCode, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import play.twirl.api.Html
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -24,6 +25,11 @@ trait HttpBaseService {
       }
     }
   }
+
+  implicit val twirlMarshaller: ToEntityMarshaller[Html] =
+    Marshaller.withFixedContentType(ContentTypes.`text/html(UTF-8)`) { html =>
+      HttpEntity(ContentTypes.`text/html(UTF-8)`, html.body)
+    }
 
   protected def registerRoute(route: Route): Unit = routes += route
 
