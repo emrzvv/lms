@@ -10,7 +10,7 @@ import http.auth.{Auth, JwtSecurity, JwtToken}
 import org.mdedetrich.akka.http.WebJarsSupport.webJars
 import play.twirl.api.Html
 import utils.Serializers
-import views.html.{home, login, register}
+import views.html.{home, login, register, head, header, footer}
 
 import java.time.LocalDate
 import java.util.UUID
@@ -47,46 +47,15 @@ trait UserController {
       }
     }
 
-//  registerRoute(pathPrefix("auth") {
-//    post {
-//      entity(as[Auth]) { auth =>
-//        val maybeUserF: Future[Option[User]] = userRepository.getByAuthData(auth)
-//        handleResponse[Option[JwtToken]] {
-//          maybeUserF.map {
-//            case Some(user) =>
-//              setCookie(HttpCookie("jwt_token", value = encodeToken(user))) {
-//                redirect("/", StatusCodes.TemporaryRedirect)
-//              }
-////              Some(JwtToken(encodeToken(user)))
-//            case None =>
-//              redirect("/login", StatusCodes.TemporaryRedirect)
-//          }
-//        }
-//      }
-//    } ~ path("register") {
-//      concat(
-//        get {
-//          println("GET REGISTER FORM")
-//          complete(register())
-//        },
-//        post {
-//          println("POST REGISTER FORM")
-//          registerForm
-//        }
-//      )
-//    }
-//  })
-
   registerRoute(pathPrefix("webjars") {
     webJars
   } ~ pathSingleSlash {
     get {
-      authenticatedWithRole("admin") { admin =>
-        complete(s"hello ${admin}")
+      authenticatedWithRole("user") { user =>
+        complete(home(user)(head())(header())(footer()))
       }
     }
-  } ~
-    path("register") {
+  } ~ path("register") {
       concat(
         get {
           complete(register(None, None, None))
@@ -104,12 +73,10 @@ trait UserController {
           loginForm
         }
       )
+    } ~ pathPrefix("user") {
+      authenticatedWithRole("user") { user =>
+        complete(user)
+      }
     }
   )
-
-  registerRoute(pathSingleSlash {
-    get {
-      complete(home())
-    }
-  })
 }
