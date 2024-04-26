@@ -9,32 +9,36 @@
     <link rel="stylesheet" type="text/css" href="webjars/bootstrap.min.css">
     <title>LMS</title>
 </head>
-<body>
-
-<div class="content container mt-3">
-    <h2 class="text-center mb-4">Регистрация</h2>
-    <form action="/register" method="POST">
-        <div class="mb-3">
-            <label for="exampleInputUsername" class="form-label">Имя пользователя</label>
-            <input name="username" type="text" class="form-control" id="exampleInputUsername" aria-describedby="usernameHelp">@username</input>
-            <div id="usernameHelp" class="form-text">Введите ваше имя пользователя.</div>
-        </div>
-        <div class="mb-3">
-            <label for="exampleInputEmail" class="form-label">Email адрес</label>
-            <input name="email" type="email" class="form-control" id="exampleInputEmail" aria-describedby="emailHelp">@email</input>
-            <div id="emailHelp" class="form-text">Мы никогда не передадим ваш email третьим лицам.</div>
-        </div>
-        <div class="mb-3">
-            <label for="exampleInputRole" class="form-label">Роль</label>
-            <input name="role" type="text" class="form-control" id="exampleInputRole" aria-describedby="roleHelp">@role</input>
-<!--            <select class="form-select" id="exampleInputRole">-->
-<!--                <option value="user">Пользователь</option>-->
-<!--                <option value="admin">Администратор</option>-->
-<!--            </select>-->
-            <div id="roleHelp" class="form-text">Выберите вашу роль в системе.</div>
-        </div>
-        <button type="submit" class="btn btn-primary">Отправить</button>
-    </form>
+<body class="d-flex justify-content-center align-items-center" style="height: 100vh;"> <!-- Добавлены классы для вертикального и горизонтального центрирования -->
+<div class="content container mt-3 border rounded" style="max-width: 400px;"> <!-- Установлен максимальный размер контейнера -->
+    <div class="content p-5">
+        <h2 class="text-center mb-4">Регистрация</h2>
+        <form action="/register" method="POST">
+            <div class="mb-3">
+                <label for="exampleInputUsername" class="form-label">Имя пользователя</label>
+                <input name="username" type="text" class="form-control" id="exampleInputUsername" aria-describedby="usernameHelp">@username</input>
+                <div id="usernameHelp" class="form-text">Введите ваше имя пользователя.</div>
+            </div>
+            <div class="mb-3">
+                <label for="exampleInputEmail" class="form-label">Email адрес</label>
+                <input name="email" type="email" class="form-control" id="exampleInputEmail" aria-describedby="emailHelp">@email</input>
+                <div id="emailHelp" class="form-text">Мы никогда не передадим ваш email третьим лицам.</div>
+            </div>
+            <div class="mb-3">
+                <label for="exampleInputRole" class="form-label">Роль</label>
+                <input name="role" type="text" class="form-control" id="exampleInputRole" aria-describedby="roleHelp">@role</input>
+                <!--            <select class="form-select" id="exampleInputRole">-->
+                <!--                <option value="user">Пользователь</option>-->
+                <!--                <option value="admin">Администратор</option>-->
+                <!--            </select>-->
+                <div id="roleHelp" class="form-text">Выберите вашу роль в системе.</div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-3 mt-3">
+                <a href="/login" class="text-muted">Есть аккаунт? Войти</a>
+                <button type="submit" class="btn btn-primary">Отправить</button>
+            </div>
+        </form>
+    </div>
 </div>
 </body>
 </html>
