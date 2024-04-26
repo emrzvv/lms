@@ -1,0 +1,48 @@
+@import db.model.User
+@(currentUser: User)(head: Html)(header: Html)(footer: Html)
+
+<!doctype html>
+<html lang="en">
+@head
+<body>
+@header
+<div class="content container mt-3">
+    <h2 class="text-center mb-4">Популярные курсы</h2>
+    <div class="row">
+        <!-- Первые 6 карточек -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="row g-0">
+                    <div class="col-md-4 px-2 mt-4">
+                        <img src="https://www.collegerank.net/wp-content/uploads/2020/08/AdobeStock_140218536.jpeg" class="card-img-top" alt="Изображение курса">
+                    </div>
+                    <div class="col-md-8">
+                        <div class="card-body">
+                            <!-- Название курса -->
+                            <h5 class="card-title">Название курса</h5>
+                            <!-- Описание курса -->
+                            <p class="card-text">Описание курса. Lorem ipsum dolor sit amet, consectetur adipisicing elit. Amet numquam aspernatur!</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <!-- Рейтинг курса -->
+                                <div class="rating">
+                                    <span class="badge bg-secondary">4.5</span>
+                                    <span class="text-muted">Рейтинг</span>
+                                </div>
+                                <!-- Количество пользователей -->
+                                <div class="users">
+                                    <span class="badge bg-info">1000+</span>
+                                    <span class="text-muted">Пользователей</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Добавь еще 5 карточек с аналогичной разметкой -->
+    </div>
+</div>
+
+@footer
+</body>
+</html>

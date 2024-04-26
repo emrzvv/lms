@@ -1,19 +1,21 @@
 package http
 
-import akka.http.scaladsl.marshalling.ToEntityMarshaller
-import akka.http.scaladsl.model.{StatusCode, StatusCodes}
+import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCode, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import http.auth.JwtSecurity
+import play.twirl.api.Html
 
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
 
-trait HttpBaseService {
+trait HttpBaseController {
   this: HttpRoute =>
 
-  private val routes = mutable.MutableList[Route]()
+  private val routes = mutable.ArrayBuffer[Route]()
 
   override lazy val route: Route = {
     if (routes.nonEmpty) {
@@ -24,6 +26,11 @@ trait HttpBaseService {
       }
     }
   }
+
+  implicit val twirlMarshaller: ToEntityMarshaller[Html] =
+    Marshaller.withFixedContentType(ContentTypes.`text/html(UTF-8)`) { html =>
+      HttpEntity(ContentTypes.`text/html(UTF-8)`, html.body)
+    }
 
   protected def registerRoute(route: Route): Unit = routes += route
 
