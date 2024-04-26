@@ -37,7 +37,7 @@ trait UserController {
             redirect("/", StatusCodes.SeeOther)
           }
         case None =>
-          redirect("/login", StatusCodes.SeeOther)
+          complete(login(Some(username), Some("Неверный логин или пароль")))
       }
     }
 
@@ -75,7 +75,7 @@ trait UserController {
     path("login") {
       concat(
         get {
-          complete(login(None))
+          complete(login(None, None))
         },
         post {
           loginForm
