@@ -10,6 +10,7 @@ import utils.Serializers
 
 import java.time.Clock
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim}
+import views.html.login
 
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
@@ -44,7 +45,7 @@ trait JwtSecurity extends Serializers {
           case None => reject(AuthorizationFailedRejection).toDirective[Tuple1[User]]
         }
       case t =>
-        complete(StatusCodes.Unauthorized)
+        redirect("/login", StatusCodes.SeeOther)
     }
   }
 
