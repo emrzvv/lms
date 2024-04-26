@@ -44,7 +44,6 @@ trait JwtSecurity extends Serializers {
           case None => reject(AuthorizationFailedRejection).toDirective[Tuple1[User]]
         }
       case t =>
-        println(t.get)
         complete(StatusCodes.Unauthorized)
     }
   }
