@@ -1,5 +1,6 @@
 import component.impl.{ActorSystemComponentImpl, ConfigComponentImpl, DatabaseComponentImpl, RepositoriesImpl, RoutingComponentImpl}
-import http.{HttpRoute, HttpRoutingService}
+import http.auth.JwtSecurity
+import http.{HttpRoute, HttpRoutingController}
 import utils.{Logging, Serializers}
 
 object Boot extends App
@@ -10,5 +11,6 @@ object Boot extends App
   with RepositoriesImpl
   with Serializers
   with HttpRoute
-  with HttpRoutingService
+  with HttpRoutingController
   with RoutingComponentImpl
+  with JwtSecurity
