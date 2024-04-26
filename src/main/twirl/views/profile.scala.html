@@ -23,15 +23,15 @@
             </div>
             @if(currentUser.id == viewingUser.id) {
             <form action="/user/@viewingUser.id" method="POST">
-                <div class="form-group">
+                <div class="form-group mt-3">
                     <label for="username">Имя пользователя:</label>
                     <input type="text" class="form-control" id="username" name="username" value="@viewingUser.username">
                 </div>
-                <div class="form-group">
+                <div class="form-group mt-3">
                     <label for="email">Email:</label>
                     <input type="email" class="form-control" id="email" name="email" value="@viewingUser.email">
                 </div>
-                <div class="form-group">
+                <div class="form-group mt-3">
                     <label for="role">Роль:</label>
                     <input type="text" class="form-control" id="role" name="role" value="@viewingUser.role">
                 </div>
