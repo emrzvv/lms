@@ -20,8 +20,8 @@ trait UserController {
   this: Repositories with HttpBaseController with ActorSystemComponent with Serializers with JwtSecurity =>
 
   private def registerForm =
-    formFields("username", "email", "role") { (username, email, role) =>
-      val maybeUser = User(UUID.randomUUID(), username, email, role, LocalDate.now()) // TODO: validation
+    formFields("username", "email") { (username, email) =>
+      val maybeUser = User(UUID.randomUUID(), username, email, List("user"), LocalDate.now()) // TODO: validation
       onSuccess(userRepository.add(maybeUser)) { result =>
         setCookie(HttpCookie("jwt_token", value = encodeToken(maybeUser))) {
           redirect("/", StatusCodes.SeeOther)
@@ -42,8 +42,8 @@ trait UserController {
     }
 
   private def profileForm(user: User, viewingUser: User) =
-    formFields("username", "email", "role") { (username, email, role) =>
-      val updatedViewingUser = viewingUser.copy(username = username, email = email, role = role)
+    formFields("username", "email") { (username, email) =>
+      val updatedViewingUser = viewingUser.copy(username = username, email = email) // TODO: checkbox?
       val updatedUser = if (user.id == viewingUser.id) updatedViewingUser else user
       onSuccess(userRepository.update(updatedUser)) { _ =>
         complete(profile(updatedUser, updatedViewingUser)(head())(header(updatedUser))(footer()))
@@ -65,7 +65,7 @@ trait UserController {
     path("register") {
       concat(
         get {
-          complete(register(None, None, None))
+          complete(register(None, None))
         },
         post {
           registerForm
@@ -103,7 +103,7 @@ trait UserController {
         authenticatedWithRole("user") { currentUser =>
           onSuccess(userRepository.getById(id)) {
             case Some(viewingUser) =>
-              if (viewingUser.id == currentUser.id || currentUser.role == "admin") { // TODO" user.roles.contains("admin")
+              if (viewingUser.id == currentUser.id || currentUser.roles.contains("admin")) {
                 println(s"UPDATING ${}")
                 profileForm(currentUser, viewingUser)
               } else {
