@@ -2,7 +2,8 @@ package component.impl
 
 import com.github.tminglei.slickpg.{ExPostgresProfile, PgArraySupport, PgDate2Support, PgHStoreSupport, PgLTreeSupport, PgNetSupport, PgPlayJsonSupport, PgRangeSupport, PgSearchSupport}
 import component.{ActorSystemComponent, DatabaseComponent, Repositories}
-import db.model.{UserRepository, UserRepositoryImpl}
+import db.Tables
+import db.model.{CourseRepository, CourseRepositoryImpl, UserRepository, UserRepositoryImpl}
 import utils.Logging
 
 trait MyPostgresProfile extends ExPostgresProfile
@@ -38,5 +39,8 @@ object MyPostgresProfile extends MyPostgresProfile
 
 trait RepositoriesImpl extends Repositories {
   this: DatabaseComponent with Logging with ActorSystemComponent =>
-  override val userRepository: UserRepository = UserRepositoryImpl(db, MyPostgresProfile)
+  val tables: Tables = Tables(MyPostgresProfile)
+
+  override val userRepository: UserRepository = UserRepositoryImpl(db, MyPostgresProfile, tables)
+  override val courseRepository: CourseRepository = CourseRepositoryImpl(db, MyPostgresProfile, tables)
 }

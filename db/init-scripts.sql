@@ -17,7 +17,7 @@ CREATE TABLE "courses" (
   "created_at" timestamp NOT NULL DEFAULT now(),
   "last_modified_at" timestamp NOT NULL DEFAULT now(),
   "is_published" bool NOT NULL DEFAULT false,
-  CONSTRAINT "fk_course_creator_id" FOREIGN KEY ("creator_id") REFERENCES "users"("id")
+  CONSTRAINT "fk_creator_id" FOREIGN KEY ("creator_id") REFERENCES "users"("id")
 );
 
 CREATE TABLE "categories" (
