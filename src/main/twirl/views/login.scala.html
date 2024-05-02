@@ -1,4 +1,4 @@
-@(username: Option[String])
+@(username: Option[String], warning: Option[String])
 
 <!doctype html>
 <html lang="en">
@@ -9,15 +9,20 @@
     <link rel="stylesheet" type="text/css" href="webjars/bootstrap.min.css">
     <title>LMS</title>
 </head>
-<body class="d-flex justify-content-center align-items-center" style="height: 100vh;"> <!-- Добавлены классы для вертикального и горизонтального центрирования -->
-<div class="content container mt-3 border rounded" style="max-width: 400px;"> <!-- Установлен максимальный размер контейнера -->
+<body class="d-flex justify-content-center align-items-center" style="height: 100vh;">
+<div class="content container mt-3 border rounded" style="max-width: 400px;">
     <div class="content p-5">
         <h2 class="text-center mb-4">Вход</h2>
         <form action="/login" method="POST">
             <div class="mb-3">
                 <label for="exampleInputUsername" class="form-label">Имя пользователя</label>
-                <input name="username" type="text" class="form-control" id="exampleInputUsername" aria-describedby="usernameHelp">@username</input>
+                <input name="username" type="text" class="form-control" id="exampleInputUsername" aria-describedby="usernameHelp" value="@username"></input>
             </div>
+            @if(warning.nonEmpty) {
+            <div class="alert alert-danger mb-3" role="alert">
+                @warning
+            </div>
+            }
             <div class="d-flex justify-content-between align-items-center mb-3 mt-3">
                 <a href="/register" class="text-muted">Зарегистрироваться</a>
                 <button type="submit" class="btn btn-primary">Отправить</button>
@@ -27,6 +32,5 @@
 </div>
 </body>
 </html>
-
 
 

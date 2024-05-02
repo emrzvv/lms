@@ -8,26 +8,20 @@ import db.model.User
 import http.HttpBaseController
 import http.auth.{Auth, JwtSecurity, JwtToken}
 import org.mdedetrich.akka.http.WebJarsSupport.webJars
-import play.twirl.api.Html
+import play.twirl.api.{Html, JavaScript}
 import utils.Serializers
-import views.html.{home, login, register, head, header, footer}
+import views.html.{footer, head, header, home, login, profile, register}
 
 import java.time.LocalDate
 import java.util.UUID
 import scala.concurrent.Future
 
-// GET /user/<uuid>
-// POST /user
-// DELETE /user/<uuid>
-// PUT /user
-// GET /user/all?limit=<limit>&offset=<offset>
-
 trait UserController {
   this: Repositories with HttpBaseController with ActorSystemComponent with Serializers with JwtSecurity =>
 
   private def registerForm =
-    formFields("username", "email", "role") { (username, email, role) =>
-      val maybeUser = User(UUID.randomUUID(), username, email, role, LocalDate.now()) // TODO: validation
+    formFields("username", "email") { (username, email) =>
+      val maybeUser = User(UUID.randomUUID(), username, email, List("user"), LocalDate.now()) // TODO: validation
       onSuccess(userRepository.add(maybeUser)) { result =>
         setCookie(HttpCookie("jwt_token", value = encodeToken(maybeUser))) {
           redirect("/", StatusCodes.SeeOther)
@@ -43,39 +37,82 @@ trait UserController {
             redirect("/", StatusCodes.SeeOther)
           }
         case None =>
-          redirect("/login", StatusCodes.SeeOther)
+          complete(login(Some(username), Some("Неверный логин или пароль")))
+      }
+    }
+
+  private def profileForm(user: User, viewingUser: User) =
+    formFields("username", "email") { (username, email) =>
+      val updatedViewingUser = viewingUser.copy(username = username, email = email) // TODO: checkbox?
+      val updatedUser = if (user.id == viewingUser.id) updatedViewingUser else user
+      onSuccess(userRepository.update(updatedUser)) { _ =>
+        complete(profile(updatedUser, updatedViewingUser)(head())(header(updatedUser))(footer()))
       }
     }
 
   registerRoute(pathPrefix("webjars") {
     webJars
-  } ~ pathSingleSlash {
-    get {
-      authenticatedWithRole("user") { user =>
-        complete(home(user)(head())(header())(footer()))
+  })
+
+  registerRoute(
+    pathSingleSlash {
+      get {
+        authenticatedWithRole("user") { user =>
+          complete(home(user)(head())(header(user))(footer()))
+        }
       }
-    }
-  } ~ path("register") {
+    } ~
+    path("register") {
       concat(
         get {
-          complete(register(None, None, None))
+          complete(register(None, None))
         },
         post {
           registerForm
         }
       )
-    } ~ path("login") {
+    } ~
+    path("login") {
       concat(
         get {
-          complete(login(None))
+          complete(login(None, None))
         },
         post {
           loginForm
         }
       )
-    } ~ pathPrefix("user") {
-      authenticatedWithRole("user") { user =>
-        complete(user)
+    } ~
+    path("logout") {
+      get {
+        authenticatedWithRole("user") { user =>
+          deleteCookie("jwt_token") {
+            redirect("/login", StatusCodes.SeeOther)
+          }
+        }
+      }
+    } ~
+    path("user" / JavaUUID) { id =>
+      get {
+        authenticatedWithRole("user") { currentUser =>
+          onSuccess(userRepository.getById(id)) {
+            case Some(viewingUser) => complete(profile(currentUser, viewingUser)(head())(header(currentUser))(footer()))
+            case None => complete(StatusCodes.NotFound)
+          }
+        }
+      } ~ post {
+        authenticatedWithRole("user") { currentUser =>
+          onSuccess(userRepository.getById(id)) {
+            case Some(viewingUser) =>
+              if (viewingUser.id == currentUser.id || currentUser.roles.contains("admin")) {
+                println(s"UPDATING ${}")
+                profileForm(currentUser, viewingUser)
+              } else {
+                complete(StatusCodes.Forbidden)
+              }
+            case None => complete(StatusCodes.NotFound)
+          }
+
+        }
       }
     }
   )

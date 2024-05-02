@@ -1,0 +1,60 @@
+@import db.model.User
+@(currentUser: User, viewingUser: User)(head: Html)(header: Html)(footer: Html)
+
+<!doctype html>
+<html lang="en">
+@head
+<body>
+@header
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Профиль пользователя: @viewingUser.username</h3>
+                </div>
+                <div class="card-body">
+                    <p><strong>ID:</strong> @viewingUser.id</p>
+                    <p><strong>Email:</strong> @viewingUser.email</p>
+                    <p><strong>Роли:</strong> @viewingUser.roles</p>
+                    <p><strong>Зарегистрирован:</strong> @viewingUser.registeredAt</p>
+                </div>
+            </div>
+            @if(currentUser.id == viewingUser.id) {
+            <form action="/user/@viewingUser.id" method="POST">
+                <div class="form-group mt-3">
+                    <label for="username">Имя пользователя:</label>
+                    <input type="text" class="form-control" id="username" name="username" value="@viewingUser.username">
+                </div>
+                <div class="form-group mt-3">
+                    <label for="email">Email:</label>
+                    <input type="email" class="form-control" id="email" name="email" value="@viewingUser.email">
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Сохранить</button>
+            </form>
+            }
+        </div>
+    </div>
+</div>
+@if(currentUser.id == viewingUser.id) {
+<div class="container mt-3">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card-group">
+                <div class="card">
+                    <a href="/courses/filter?author=@viewingUser.username" class="card-body btn btn-link">Созданные курсы</a>
+                </div>
+                <div class="card">
+                    <a href="/user/@viewingUser.id/courses" class="card-body btn btn-link">Прохожу курсы</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+}
+
+
+@footer
+</body>
+</html>

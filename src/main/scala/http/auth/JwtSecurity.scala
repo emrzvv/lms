@@ -1,7 +1,6 @@
 package http.auth
 
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.model.headers.HttpCookiePair
 import akka.http.scaladsl.server.{AuthorizationFailedRejection, Directive1}
 import akka.http.scaladsl.server.Directives._
 import db.model.User
@@ -10,7 +9,6 @@ import utils.Serializers
 
 import java.time.Clock
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim}
-import views.html.login
 
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
@@ -32,7 +30,7 @@ trait JwtSecurity extends Serializers {
 
   def authenticatedWithRole(role: String): Directive1[User] = {
     authenticated flatMap {
-      case user: User if user.role == role => provide(user) // TODO: user.role -> user.roles
+      case user: User if user.roles.contains(role.trim) => provide(user)
       case _ => reject(AuthorizationFailedRejection).toDirective[Tuple1[User]]
     }
   }
