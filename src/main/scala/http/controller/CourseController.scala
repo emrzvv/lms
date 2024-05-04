@@ -8,7 +8,7 @@ import db.model.{Course, User}
 import http.HttpBaseController
 import http.auth.JwtSecurity
 import utils.Serializers
-import views.html.{footer, head, header}
+import views.html.{course_preview, footer, head, header, newcourse}
 
 import java.time.LocalDateTime
 import java.util.UUID
