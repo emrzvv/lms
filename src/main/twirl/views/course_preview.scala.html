@@ -16,6 +16,20 @@
                     <h3 class="card-title">@course.name</h3>
                     <p class="card-text">@course.description</p>
                     <p class="card-text"><small class="text-muted">Время прохождения: @course.estimatedTime ч.</small></p>
+                    @if(course.creatorId != currentUser.id) {
+                    <button class="btn btn-success">Поступить на курс</button>
+                    }
+                    @if(currentUser.roles.contains("admin")) {
+                        @if(!course.isPublished) {
+                        <form action="/publish/@course.id" method="POST">
+                            <button type="submit" class="btn btn-primary">Опубликовать курс</button>
+                        </form>
+                        } else {
+                        <form action="/hide/@course.id" method="POST">
+                            <button type="submit" class="btn btn-warning">Скрыть курс</button>
+                        </form>
+                        }
+                    }
                     @if(course.creatorId == currentUser.id) {
                     <form action="/course/@course.id" method="POST">
                         <div class="form-group mt-3">

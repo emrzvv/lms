@@ -114,6 +114,32 @@ trait UserController {
 
         }
       }
+    } ~ path("user" / JavaUUID / "roles") { id =>
+      post {
+        parameters("action", "role") { (action, role) =>
+          authenticatedWithRole("admin") { admin =>
+            onSuccess(userRepository.getById(id)) {
+              case Some(updatingUser) =>
+                if (action == "add") {
+                  val updatedRoles = (role :: updatingUser.roles).distinct
+                  val updatedUser = updatingUser.copy(roles = updatedRoles)
+                  onSuccess(userRepository.update(updatedUser)) { _ =>
+                    complete(profile(admin, updatedUser)(head())(header(updatedUser))(footer()))
+                  }
+                } else if (action == "remove") {
+                  val updatedRoles = updatingUser.roles.filterNot(_ == role)
+                  val updatedUser = updatingUser.copy(roles = updatedRoles)
+                  onSuccess(userRepository.update(updatedUser)) { _ =>
+                    complete(profile(admin, updatedUser)(head())(header(updatedUser))(footer()))
+                  }
+                } else {
+                  complete(StatusCodes.BadRequest)
+                }
+              case None => complete(StatusCodes.NotFound)
+            }
+          }
+        }
+      }
     }
   )
 }
