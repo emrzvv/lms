@@ -17,8 +17,18 @@
                 <div class="card-body">
                     <p><strong>ID:</strong> @viewingUser.id</p>
                     <p><strong>Email:</strong> @viewingUser.email</p>
-                    <p><strong>Роли:</strong> @viewingUser.roles</p>
+                    <p><strong>Роли:</strong> @viewingUser.roles.mkString(", ")</p>
                     <p><strong>Зарегистрирован:</strong> @viewingUser.registeredAt</p>
+                    @if(currentUser.roles.contains("admin") && !viewingUser.roles.contains("admin")) {
+                        <form action="/user/@viewingUser.id/roles?action=add&role=admin" method="POST">
+                            <button type="submit" class="btn btn-success">Назначить администратором</button>
+                        </form>
+                    }
+                    @if(currentUser.roles.contains("admin") && viewingUser.roles.contains("admin") && currentUser.id != viewingUser.id) {
+                        <form action="/user/@viewingUser.id/roles?action=remove&role=admin" method="POST">
+                            <button type="submit" class="btn btn-danger mt-3">Изъять права администратора</button>
+                        </form>
+                    }
                 </div>
             </div>
             @if(currentUser.id == viewingUser.id) {
