@@ -16,12 +16,13 @@ class Tables(val profile: MyPostgresProfile) {
 
   class UserTable(tag: Tag) extends Table[User](tag, None, "users") {
     def id: Rep[UUID] = column[UUID]("id", O.PrimaryKey)
-    def username: Rep[String] = column[String]("username", O.Unique, O.Length(32))
+    def username: Rep[String] = column[String]("username", O.Unique)
     def email: Rep[String] = column[String]("email", O.Unique)
+    def passwordHash: Rep[String] = column[String]("password_hash")
     def roles: Rep[List[String]] = column[List[String]]("roles")
     def registeredAt: Rep[LocalDate] = column[LocalDate]("registered_at", O.Default(LocalDate.now()))
 
-    override def * : ProvenShape[User] = (id, username, email, roles, registeredAt) <> (User.tupled, User.unapply)
+    override def * : ProvenShape[User] = (id, username, email, passwordHash, roles, registeredAt) <> (User.tupled, User.unapply)
   }
 
   val usersQuery: TableQuery[UserTable] = TableQuery[UserTable]

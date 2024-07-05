@@ -1,5 +1,8 @@
 @import db.model.User
-@(currentUser: User, viewingUser: User)(head: Html)(header: Html)(footer: Html)
+@(
+currentUser: User,
+viewingUser: User
+)(head: Html)(header: Html)(footer: Html)
 
 <!doctype html>
 <html lang="en">
@@ -19,16 +22,46 @@
                     <p><strong>Email:</strong> @viewingUser.email</p>
                     <p><strong>Роли:</strong> @viewingUser.roles.mkString(", ")</p>
                     <p><strong>Зарегистрирован:</strong> @viewingUser.registeredAt</p>
-                    @if(currentUser.roles.contains("admin") && !viewingUser.roles.contains("admin")) {
-                        <form action="/user/@viewingUser.id/roles?action=add&role=admin" method="POST">
-                            <button type="submit" class="btn btn-success">Назначить администратором</button>
-                        </form>
+                    @if(currentUser.roles.contains("admin")) {
+                        @if(!viewingUser.roles.contains("admin")) {
+                            <form action="/user/@viewingUser.id/roles?action=add&role=admin" method="POST">
+                                <button type="submit" class="btn btn-success">Назначить администратором</button>
+                            </form>
+                        } else if(currentUser.id != viewingUser.id) {
+                            <form action="/user/@viewingUser.id/roles?action=remove&role=admin" method="POST">
+                                <button type="submit" class="btn btn-danger mt-3">Изъять права администратора</button>
+                            </form>
+                        }
+                        @if(!viewingUser.roles.contains("tutor")) {
+                            <form action="/user/@viewingUser.id/roles?action=add&role=tutor" method="POST">
+                                <button type="submit" class="btn btn-success mt-3">Назначить преподавателем</button>
+                            </form>
+                        } else {
+                            <form action="/user/@viewingUser.id/roles?action=remove&role=tutor" method="POST">
+                                <button type="submit" class="btn btn-danger mt-3">Изъять права преподавателя</button>
+                            </form>
+                        }
                     }
-                    @if(currentUser.roles.contains("admin") && viewingUser.roles.contains("admin") && currentUser.id != viewingUser.id) {
-                        <form action="/user/@viewingUser.id/roles?action=remove&role=admin" method="POST">
-                            <button type="submit" class="btn btn-danger mt-3">Изъять права администратора</button>
-                        </form>
-                    }
+<!--                    @if(currentUser.roles.contains("admin") && !viewingUser.roles.contains("admin")) {-->
+<!--                        <form action="/user/@viewingUser.id/roles?action=add&role=admin" method="POST">-->
+<!--                            <button type="submit" class="btn btn-success">Назначить администратором</button>-->
+<!--                        </form>-->
+<!--                    }-->
+<!--                    @if(currentUser.roles.contains("admin") && viewingUser.roles.contains("admin") && currentUser.id != viewingUser.id) {-->
+<!--                        <form action="/user/@viewingUser.id/roles?action=remove&role=admin" method="POST">-->
+<!--                            <button type="submit" class="btn btn-danger mt-3">Изъять права администратора</button>-->
+<!--                        </form>-->
+<!--                    }-->
+<!--                    @if(currentUser.roles.contains("admin") && !viewingUser.roles.contains("tutor")) {-->
+<!--                    <form action="/user/@viewingUser.id/roles?action=add&role=admin" method="POST">-->
+<!--                        <button type="submit" class="btn btn-success">Назначить администратором</button>-->
+<!--                    </form>-->
+<!--                    }-->
+<!--                    @if(currentUser.roles.contains("admin") && viewingUser.roles.contains("admin") && currentUser.id != viewingUser.id) {-->
+<!--                    <form action="/user/@viewingUser.id/roles?action=remove&role=admin" method="POST">-->
+<!--                        <button type="submit" class="btn btn-danger mt-3">Изъять права администратора</button>-->
+<!--                    </form>-->
+<!--                    }-->
                 </div>
             </div>
             @if(currentUser.id == viewingUser.id) {

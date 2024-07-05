@@ -9,6 +9,5 @@ trait Serializers extends Json4sSupport {
   implicit val serialization: jackson.Serialization.type = jackson.Serialization
 
   implicit val formats: Formats =
-    Serialization.formats(NoTypeHints) +
-      new UserSerializer
+    Serialization.formats(NoTypeHints) + new UserSerializer
 }
