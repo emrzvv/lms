@@ -1,7 +1,7 @@
 package db
 
 import component.impl.MyPostgresProfile
-import db.model.{Course, User}
+import db.model.{Category, Course, CoursesCategoriesMapping, User, UsersCoursesMapping}
 import slick.lifted.ProvenShape
 
 import java.time.{LocalDate, LocalDateTime}
@@ -27,7 +27,7 @@ class Tables(val profile: MyPostgresProfile) {
 
   val usersQuery: TableQuery[UserTable] = TableQuery[UserTable]
 
-  class CourseTable(tag: Tag) extends Table[Course](tag, None, "courses") {
+  class CourseTable(tag: Tag) extends Table[Course](tag, None, "courses") { // TODO: check default values
     def id = column[UUID]("id", O.PrimaryKey)
     def name = column[String]("name")
     def creatorId = column[UUID]("creator_id")
@@ -36,16 +36,51 @@ class Tables(val profile: MyPostgresProfile) {
     def previewImageUrl = column[Option[String]]("preview_image_url")
     def estimatedTime = column[Int]("estimated_time")
     def createdAt = column[LocalDateTime]("created_at")
-    def lastModifiedAt = column[LocalDateTime]("last_modified_at")
     def isPublished = column[Boolean]("is_published")
+    def isFree = column[Boolean]("is_free")
 
     def fk_creatorId = foreignKey("fk_creator_id", creatorId, usersQuery)(_.id)
 
     override def * : ProvenShape[Course] =
-      (id, name, creatorId, shortDescription, description, previewImageUrl, estimatedTime, createdAt, lastModifiedAt, isPublished) <> (Course.tupled, Course.unapply)
+      (id, name, creatorId, shortDescription, description, previewImageUrl, estimatedTime, createdAt, isPublished, isFree) <> (Course.tupled, Course.unapply)
   }
 
   val coursesQuery: TableQuery[CourseTable] = TableQuery[CourseTable]
 
+  class UsersCoursesMappingTable(tag: Tag) extends Table[UsersCoursesMapping](tag, None, "users_courses") {
+    def userId = column[UUID]("user_id")
+    def courseId = column[UUID]("course_id")
+    def ableToEdit = column[Boolean]("able_to_edit", O.Default(false))
 
+    def pk = primaryKey("pk", (userId, courseId))
+    def fk_userId = foreignKey("fk_user_id", userId, usersQuery)(_.id)
+    def fk_courseId = foreignKey("fk_course_id", courseId, coursesQuery)(_.id)
+
+    override def * : ProvenShape[UsersCoursesMapping] =
+      (userId, courseId, ableToEdit) <> (UsersCoursesMapping.tupled, UsersCoursesMapping.unapply)
+  }
+
+  val usersCoursesQuery: TableQuery[UsersCoursesMappingTable] = TableQuery[UsersCoursesMappingTable]
+
+  class CategoriesTable(tag: Tag) extends Table[Category](tag, None, "categories") {
+    def id = column[UUID]("id", O.PrimaryKey)
+    def name = column[String]("name")
+    def description = column[Option[String]]("description")
+
+    override def * : ProvenShape[Category] =
+      (id, name, description) <> (Category.tupled, Category.unapply)
+  }
+
+  val categoriesQuery: TableQuery[CategoriesTable] = TableQuery[CategoriesTable]
+
+  class CoursesCategoriesMappingTable(tag: Tag) extends Table[CoursesCategoriesMapping](tag, None, "courses_categories") {
+    def courseId = column[UUID]("course_id")
+    def categoryId = column[UUID]("category_id")
+
+    def pk = primaryKey("pk", (courseId, categoryId))
+    def fk_courseId = foreignKey("fk_course_id", courseId, coursesQuery)(_.id)
+    def fk_categoryId = foreignKey("fk_category_id", categoryId, categoriesQuery)(_.id)
+    override def * : ProvenShape[CoursesCategoriesMapping] =
+      (courseId, categoryId) <> (CoursesCategoriesMapping.tupled, CoursesCategoriesMapping.unapply)
+  }
 }

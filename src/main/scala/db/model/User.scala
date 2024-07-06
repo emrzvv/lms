@@ -12,7 +12,12 @@ import java.time.LocalDate
 import java.util.UUID
 import scala.concurrent.Future
 
-case class User(id: UUID, username: String, email: String, passwordHash: String, roles: List[String], registeredAt: LocalDate)
+case class User(id: UUID,
+                username: String,
+                email: String,
+                passwordHash: String,
+                roles: List[String],
+                registeredAt: LocalDate)
 
 trait UserRepository {
   def add(user: User): Future[Int]

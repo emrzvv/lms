@@ -86,6 +86,6 @@ CREATE TABLE "courses_categories" (
   "course_id" uuid NOT NULL,
   "category_id" uuid NOT NULL,
   PRIMARY KEY ("course_id", "category_id"),
-  CONSTRAINT "fk_course_category_course_id" FOREIGN KEY ("course_id") REFERENCES "courses"("id"),
-  CONSTRAINT "fk_course_category_category_id" FOREIGN KEY ("category_id") REFERENCES "categories"("id")
+  CONSTRAINT "fk_course_id" FOREIGN KEY ("course_id") REFERENCES "courses"("id"),
+  CONSTRAINT "fk_category_id" FOREIGN KEY ("category_id") REFERENCES "categories"("id")
 );

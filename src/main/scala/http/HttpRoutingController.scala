@@ -7,7 +7,8 @@ import service.UserService
 import utils.Serializers
 
 trait HttpRoutingController extends HttpBaseController
-  with UserController {
+  with UserController
+  with CourseController {
   this: Services
     with ActorSystemComponent
     with Serializers

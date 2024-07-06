@@ -17,8 +17,8 @@ case class Course(id: UUID,
                   previewImageUrl: Option[String],
                   estimatedTime: Int,
                   createdAt: LocalDateTime,
-                  lastModifiedAt: LocalDateTime,
-                  isPublished: Boolean)
+                  isPublished: Boolean,
+                  isFree: Boolean)
 
 trait CourseRepository {
   def add(course: Course): Future[Int]
@@ -43,8 +43,8 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
   override def update(course: Course): Future[Int] = db.run {
     coursesQuery.filter(_.id === course.id)
       .map(c =>
-        (c.name, c.shortDescription, c.description, c.previewImageUrl, c.estimatedTime, c.lastModifiedAt, c.isPublished))
-        .update((course.name, course.shortDescription, course.description, course.previewImageUrl, course.estimatedTime, LocalDateTime.now(), course.isPublished))
+        (c.name, c.shortDescription, c.description, c.previewImageUrl, c.estimatedTime, c.isPublished, c.isFree))
+        .update((course.name, course.shortDescription, course.description, course.previewImageUrl, course.estimatedTime, course.isPublished, course.isFree))
   }
 
   override def getById(uuid: UUID): Future[Option[Course]] = db.run {

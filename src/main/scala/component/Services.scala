@@ -1,7 +1,8 @@
 package component
 
-import service.UserService
+import service.{CourseService, UserService}
 
 trait Services {
   def userService: UserService
+  def courseService: CourseService
 }

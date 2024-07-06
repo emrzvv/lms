@@ -1,14 +1,15 @@
 @import db.model.User
+@import http.html.PageComponents
 @(
 currentUser: User,
 viewingUser: User
-)(head: Html)(header: Html)(footer: Html)
+)(components: PageComponents)
 
 <!doctype html>
 <html lang="en">
-@head
+@components.head
 <body>
-@header
+@components.header
 
 <div class="container mt-5">
     <div class="row">
@@ -42,26 +43,6 @@ viewingUser: User
                             </form>
                         }
                     }
-<!--                    @if(currentUser.roles.contains("admin") && !viewingUser.roles.contains("admin")) {-->
-<!--                        <form action="/user/@viewingUser.id/roles?action=add&role=admin" method="POST">-->
-<!--                            <button type="submit" class="btn btn-success">Назначить администратором</button>-->
-<!--                        </form>-->
-<!--                    }-->
-<!--                    @if(currentUser.roles.contains("admin") && viewingUser.roles.contains("admin") && currentUser.id != viewingUser.id) {-->
-<!--                        <form action="/user/@viewingUser.id/roles?action=remove&role=admin" method="POST">-->
-<!--                            <button type="submit" class="btn btn-danger mt-3">Изъять права администратора</button>-->
-<!--                        </form>-->
-<!--                    }-->
-<!--                    @if(currentUser.roles.contains("admin") && !viewingUser.roles.contains("tutor")) {-->
-<!--                    <form action="/user/@viewingUser.id/roles?action=add&role=admin" method="POST">-->
-<!--                        <button type="submit" class="btn btn-success">Назначить администратором</button>-->
-<!--                    </form>-->
-<!--                    }-->
-<!--                    @if(currentUser.roles.contains("admin") && viewingUser.roles.contains("admin") && currentUser.id != viewingUser.id) {-->
-<!--                    <form action="/user/@viewingUser.id/roles?action=remove&role=admin" method="POST">-->
-<!--                        <button type="submit" class="btn btn-danger mt-3">Изъять права администратора</button>-->
-<!--                    </form>-->
-<!--                    }-->
                 </div>
             </div>
             @if(currentUser.id == viewingUser.id) {
@@ -98,6 +79,6 @@ viewingUser: User
 }
 
 
-@footer
+@components.footer
 </body>
 </html>
