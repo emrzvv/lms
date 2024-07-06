@@ -6,6 +6,8 @@ import db.Tables
 import db.model.{CourseRepository, CourseRepositoryImpl, UserRepository, UserRepositoryImpl}
 import utils.Logging
 
+import scala.concurrent.ExecutionContext
+
 trait MyPostgresProfile extends ExPostgresProfile
   with PgArraySupport
   with PgDate2Support
@@ -42,5 +44,5 @@ trait RepositoriesImpl extends Repositories {
   val tables: Tables = Tables(MyPostgresProfile)
 
   override val userRepository: UserRepository = UserRepositoryImpl(db, MyPostgresProfile, tables)
-  override val courseRepository: CourseRepository = CourseRepositoryImpl(db, MyPostgresProfile, tables)
+  override val courseRepository: CourseRepository = CourseRepositoryImpl(db, MyPostgresProfile, tables, executionContext: ExecutionContext)
 }

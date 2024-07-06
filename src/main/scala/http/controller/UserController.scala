@@ -9,10 +9,12 @@ import http.HttpBaseController
 import http.auth.{Auth, JwtSecurity, JwtToken}
 import http.html.PageComponents
 import org.mdedetrich.akka.http.WebJarsSupport.webJars
-import play.twirl.api.{Html, JavaScript}
 import service.{UserService, UserServiceImpl}
 import utils.Serializers
-import views.html.{footer, head, header, home, login, profile, register}
+import views.html.auth.{login, register}
+import views.html.components.{footer, head, header}
+import views.html.home
+import views.html.user.profile
 
 import java.time.LocalDate
 import java.util.UUID

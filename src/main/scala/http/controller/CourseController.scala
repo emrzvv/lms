@@ -10,7 +10,8 @@ import http.auth.JwtSecurity
 import http.html.PageComponents
 import http.model.UpdateCourseRequest
 import utils.Serializers
-import views.html.{course_preview, footer, head, header, newcourse}
+import views.html.components.{footer, head, header}
+import views.html.course.{course_preview, courses_all, newcourse}
 
 import java.time.LocalDateTime
 import java.util.UUID
@@ -52,6 +53,17 @@ trait CourseController {
           }
         )
       } ~
+        path("all") {
+          get {
+            parameters("limit".as[Int].optional, "offset".as[Int].optional) { (limit, offset) =>
+              authenticatedWithRole("user") { user =>
+                onSuccess(courseService.all(limit.getOrElse(9), offset.getOrElse(0))) { (courses, totalCourses) =>
+                  complete(courses_all(user, courses, limit.getOrElse(9), offset.getOrElse(0), totalCourses)(PageComponents(head(), header(user), footer())))
+                }
+              }
+            }
+          }
+        }~
         path(JavaUUID) { id =>
           get {
             authenticatedWithRole("user") { user =>
