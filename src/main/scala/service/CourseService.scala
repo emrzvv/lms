@@ -20,6 +20,7 @@ trait CourseService {
                     description: String,
                     previewImageUrl: Option[String],
                     estimatedTime: Int): Future[UUID]
+  def all(limit: Int, offset: Int): Future[(Seq[Course], Int)]
 }
 
 object CourseServiceImpl {
@@ -80,5 +81,9 @@ class CourseServiceImpl(courseRepository: CourseRepository,
         )
       case None => Future.failed(new Exception())
     }
+  }
+
+  def all(limit: Int = 0, offset: Int = 0): Future[(Seq[Course], Int)] = {
+    courseRepository.all(limit, offset)
   }
 }

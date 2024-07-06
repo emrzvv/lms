@@ -1,0 +1,24 @@
+@(currentPage: Int, totalCourses: Int, limit: Int = 9)
+
+@defining((currentPage - 1) * limit) { offset =>
+@defining(if (currentPage > 1) (currentPage - 1) else 1) { prevPage =>
+@defining(currentPage + 1) { nextPage =>
+@defining((totalCourses + limit - 1) / limit) { totalPages =>
+
+<nav aria-label="Course pagination">
+    <ul class="pagination justify-content-center">
+        <li class="page-item @if(currentPage == 1) {disabled}">
+            <a class="page-link" href="@if(currentPage > 1) { /course/all?limit=@limit&offset=@((prevPage - 1) * limit) } else { # }" aria-label="Previous">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+
+        <li class="page-item @if(totalCourses <= offset + limit) {disabled}">
+            <a class="page-link" href="@if(totalCourses > offset + limit) { /course/all?limit=@limit&offset=@(currentPage * limit) } else { # }" aria-label="Next">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+    </ul>
+</nav>
+
+}}}}

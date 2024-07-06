@@ -1,0 +1,84 @@
+@import db.model.User
+@import db.model.Course
+@(currentUser: User,
+courses: Seq[Course],
+limit: Int,
+offset: Int,
+totalCourses: Int
+)
+
+<!doctype html>
+<html lang="en">
+@views.html.components.head()
+<style>
+    .card-img-container {
+        width: 100%;
+        max-height: 200px; /* Фиксированная высота для контейнера изображения */
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: white; /* Фон для контейнера изображения */
+    }
+    .card-img-container img {
+        width: auto;
+        max-width: 100%;
+        object-fit: cover;
+        height: 100%;
+    }
+    .card-title a {
+        color: black;
+        text-decoration: none;
+        font-size: 1.25rem;
+    }
+    .card-title a:hover {
+        color: #636363;
+    }
+    .card-divider {
+        height: 1px;
+        background-color: #ddd;
+        margin: 10px 0;
+    }
+    .card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 20px rgba(0, 0, 0, 0.3);
+    }
+</style>
+<body>
+@views.html.components.header(currentUser)
+<div class="content container mt-3">
+    <h2 class="text-center mb-4">Курсы</h2>
+    <div class="row">
+        @for(course <- courses.take(limit)) {
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-img-container">
+                    <img src="@course.previewImageUrl" alt="Изображение курса">
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <a href="/course/@course.id">
+                            @course.name
+                        </a>
+                    </h5>
+                    <div class="card-divider"></div>
+                    <p class="card-text">@course.shortDescription</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="users">
+                            <span class="text-muted">some info</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        }
+    </div>
+    @views.html.components.course_pagination((offset / limit) + 1, totalCourses, limit)
+</div>
+
+@views.html.components.footer()
+</body>
+</html>
