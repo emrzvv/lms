@@ -1,20 +1,19 @@
 @import db.model.User
 @import db.model.Course
-@import http.html.PageComponents
 @(currentUser: User,
 courses: Seq[Course],
 limit: Int,
 offset: Int,
 totalCourses: Int
-)(components: PageComponents)
+)
 
 <!doctype html>
 <html lang="en">
-@components.head
+@views.html.components.head()
 <style>
     .card-img-container {
         width: 100%;
-        height: 200px; /* Фиксированная высота для контейнера изображения */
+        max-height: 200px; /* Фиксированная высота для контейнера изображения */
         overflow: hidden;
         display: flex;
         justify-content: center;
@@ -23,6 +22,8 @@ totalCourses: Int
     }
     .card-img-container img {
         width: auto;
+        max-width: 100%;
+        object-fit: cover;
         height: 100%;
     }
     .card-title a {
@@ -47,7 +48,7 @@ totalCourses: Int
     }
 </style>
 <body>
-@components.header
+@views.html.components.header(currentUser)
 <div class="content container mt-3">
     <h2 class="text-center mb-4">Курсы</h2>
     <div class="row">
@@ -78,6 +79,6 @@ totalCourses: Int
     @views.html.components.course_pagination((offset / limit) + 1, totalCourses, limit)
 </div>
 
-@components.footer
+@views.html.components.footer()
 </body>
 </html>

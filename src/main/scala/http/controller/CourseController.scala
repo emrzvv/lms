@@ -7,7 +7,6 @@ import component.{ActorSystemComponent, Repositories, Services}
 import db.model.{Course, User}
 import http.HttpBaseController
 import http.auth.JwtSecurity
-import http.html.PageComponents
 import http.model.UpdateCourseRequest
 import utils.Serializers
 import views.html.components.{footer, head, header}
@@ -43,7 +42,7 @@ trait CourseController {
         concat(
           get {
             authenticatedWithRole("tutor") { user =>
-              complete(newcourse(user)(PageComponents(head(), header(user), footer())))
+              complete(newcourse(user))
             }
           },
           post {
@@ -58,7 +57,7 @@ trait CourseController {
             parameters("limit".as[Int].optional, "offset".as[Int].optional) { (limit, offset) =>
               authenticatedWithRole("user") { user =>
                 onSuccess(courseService.all(limit.getOrElse(9), offset.getOrElse(0))) { (courses, totalCourses) =>
-                  complete(courses_all(user, courses, limit.getOrElse(9), offset.getOrElse(0), totalCourses)(PageComponents(head(), header(user), footer())))
+                  complete(courses_all(user, courses, limit.getOrElse(9), offset.getOrElse(0), totalCourses))
                 }
               }
             }
@@ -68,7 +67,7 @@ trait CourseController {
           get {
             authenticatedWithRole("user") { user =>
               onSuccess(courseService.getById(id)) {
-                case Some(course) => complete(course_preview(user, course)(PageComponents(head(), header(user), footer())))
+                case Some(course) => complete(course_preview(user, course))
                 case None => complete(StatusCodes.NotFound)
               }
             }

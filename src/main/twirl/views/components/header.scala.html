@@ -9,7 +9,9 @@
                 <li><a href="/course/all" class="nav-link px-2 text-white">Курсы</a></li>
             </ul>
             <div class="text-end">
+                @if(currentUser.roles.contains("tutor")) {
                 <a href="/course/new" class="btn btn-secondary me-2" role="button">Создать курс</a>
+                }
                 <a href="/user/@currentUser.id" class="btn btn-primary me-2" role="button">Профиль</a>
                 <a href="/logout" class="btn btn-outline-light">Выйти</a>
             </div>

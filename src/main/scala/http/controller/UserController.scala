@@ -7,7 +7,6 @@ import component.{ActorSystemComponent, Repositories, Services}
 import db.model.User
 import http.HttpBaseController
 import http.auth.{Auth, JwtSecurity, JwtToken}
-import http.html.PageComponents
 import org.mdedetrich.akka.http.WebJarsSupport.webJars
 import service.{UserService, UserServiceImpl}
 import utils.Serializers
@@ -54,7 +53,7 @@ trait UserController {
       val updatedViewingUser = viewingUser.copy(username = username, email = email) // TODO: checkbox?
       val updatedUser = if (user.id == viewingUser.id) updatedViewingUser else user
       onSuccess(userService.updateUser(updatedUser)) { _ =>
-        complete(profile(updatedUser, updatedViewingUser)(PageComponents(head(), header(updatedUser), footer())))
+        complete(profile(updatedUser, updatedViewingUser))
       }
     }
 
@@ -66,7 +65,7 @@ trait UserController {
     pathSingleSlash {
       get {
         authenticatedWithRole("user") { user =>
-          complete(home(user)(PageComponents(head(), header(user), footer())))
+          complete(home(user))
         }
       }
     } ~
@@ -103,7 +102,7 @@ trait UserController {
       get {
         authenticatedWithRole("user") { currentUser =>
           onSuccess(userService.getUserById(id)) {
-            case Some(viewingUser) => complete(profile(currentUser, viewingUser)(PageComponents(head(), header(currentUser), footer())))
+            case Some(viewingUser) => complete(profile(currentUser, viewingUser))
             case None => complete(StatusCodes.NotFound)
           }
         }
@@ -112,7 +111,6 @@ trait UserController {
           onSuccess(userService.getUserById(id)) {
             case Some(viewingUser) =>
               if (viewingUser.id == currentUser.id || currentUser.roles.contains("admin")) {
-                println(s"UPDATING ${}")
                 profileForm(currentUser, viewingUser)
               } else {
                 complete(StatusCodes.Forbidden)
@@ -132,13 +130,13 @@ trait UserController {
                   val updatedRoles = (role :: updatingUser.roles).distinct
                   val updatedUser = updatingUser.copy(roles = updatedRoles)
                   onSuccess(userService.updateUser(updatedUser)) { _ =>
-                    complete(profile(admin, updatedUser)(PageComponents(head(), header(updatedUser), footer())))
+                    complete(profile(admin, updatedUser))
                   }
                 } else if (action == "remove") {
                   val updatedRoles = updatingUser.roles.filterNot(_ == role)
                   val updatedUser = updatingUser.copy(roles = updatedRoles)
                   onSuccess(userService.updateUser(updatedUser)) { _ =>
-                    complete(profile(admin, updatedUser)(PageComponents(head(), header(updatedUser), footer())))
+                    complete(profile(admin, updatedUser))
                   }
                 } else {
                   complete(StatusCodes.BadRequest)
