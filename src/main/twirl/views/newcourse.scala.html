@@ -1,11 +1,12 @@
 @import db.model.User
-@(currentUser: User)(head: Html)(header: Html)(footer: Html)
+@import http.html.PageComponents
+@(currentUser: User)(components: PageComponents)
 
 <!doctype html>
 <html lang="en">
-@head
+@components.head
 <body>
-@header
+@components.header
 <div class="container mt-5">
     <div class="row">
         <div class="col-md-8 offset-md-2">
@@ -36,6 +37,6 @@
     </div>
 </div>
 
-@footer
+@components.footer
 </body>
 </html>

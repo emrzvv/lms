@@ -12,7 +12,12 @@ import java.time.LocalDate
 import java.util.UUID
 import scala.concurrent.Future
 
-case class User(id: UUID, username: String, email: String, roles: List[String], registeredAt: LocalDate)
+case class User(id: UUID,
+                username: String,
+                email: String,
+                passwordHash: String,
+                roles: List[String],
+                registeredAt: LocalDate)
 
 trait UserRepository {
   def add(user: User): Future[Int]
@@ -63,15 +68,17 @@ class UserSerializer extends CustomSerializer[User] (format =>
       JField("id", JString(i)),
       JField("username", JString(username)),
       JField("email", JString(email)),
+      JField("passwordHash", JString(passwordHash)),
       JField("roles", a@JArray(roles)),
       JField("registeredAt", JString(registeredAt))
-    )) => User(UUID.fromString(i), username, email, a.values.map(_.toString), LocalDate.parse(registeredAt))
+    )) => User(UUID.fromString(i), username, email, passwordHash, a.values.map(_.toString), LocalDate.parse(registeredAt))
   },
   {
     case u: User => JObject(
       JField("id", JString(u.id.toString)) ::
         JField("username", JString(u.username)) ::
         JField("email", JString(u.email)) ::
+        JField("passwordHash", JString(u.passwordHash)) ::
         JField("roles", JArray(u.roles.map(JString))) ::
         JField("registeredAt", JString(u.registeredAt.toString)) ::
         Nil

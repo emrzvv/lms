@@ -1,12 +1,13 @@
 @import db.model.User
 @import db.model.Course
-@(currentUser: User, course: Course)(head: Html)(header: Html)(footer: Html)
+@import http.html.PageComponents
+@(currentUser: User, course: Course)(components: PageComponents)
 
 <!DOCTYPE html>
 <html lang="en">
-@head
+@components.head
 <body>
-@header
+@components.header
 <div class="container mt-5">
     <div class="row">
         <div class="col-md-8 offset-md-2">
@@ -20,29 +21,29 @@
                     <button class="btn btn-success">Поступить на курс</button>
                     }
                     @if(currentUser.roles.contains("admin")) {
-                        @if(!course.isPublished) {
-                        <form action="/publish/@course.id" method="POST">
-                            <button type="submit" class="btn btn-primary">Опубликовать курс</button>
-                        </form>
-                        } else {
-                        <form action="/hide/@course.id" method="POST">
-                            <button type="submit" class="btn btn-warning">Скрыть курс</button>
-                        </form>
-                        }
+                    @if(!course.isPublished) {
+                    <form action="/publish/@course.id" method="POST">
+                        <button type="submit" class="btn btn-primary">Опубликовать курс</button>
+                    </form>
+                    } else {
+                    <form action="/hide/@course.id" method="POST">
+                        <button type="submit" class="btn btn-warning">Скрыть курс</button>
+                    </form>
+                    }
                     }
                     @if(course.creatorId == currentUser.id) {
-                    <form action="/course/@course.id" method="POST">
+                    <form id="courseForm">
                         <div class="form-group mt-3">
                             <label for="name">Название курса:</label>
                             <input type="text" class="form-control" id="name" name="name" value="@course.name">
                         </div>
                         <div class="form-group mt-3">
                             <label for="short_description">Краткое описание (отображается в карточке, не более 128 символов):</label>
-                            <input type="text" class="form-control" id="short_description" name="short_description" value="@course.shortDescription">
+                            <textarea class="form-control" id="short_description" name="short_description" rows="3">@course.shortDescription</textarea>
                         </div>
                         <div class="form-group mt-3">
                             <label for="description">Полное описание:</label>
-                            <input type="text" class="form-control" id="description" name="description" value="@course.description">
+                            <textarea class="form-control" id="description" name="description" rows="5">@course.description</textarea>
                         </div>
                         <div class="form-group mt-3">
                             <label for="preview_image_url">Ссылка на картинку курса (отображается в карточке и на странице курса):</label>
@@ -52,7 +53,7 @@
                             <label for="estimated_time">Предполагаемое время прохождение курса (часы)</label>
                             <input type="number" step="1" class="form-control" id="estimated_time" name="estimated_time" value="@course.estimatedTime">
                         </div>
-                        <button type="submit" class="btn btn-primary mt-3">Сохранить</button>
+                        <button type="button" class="btn btn-primary mt-3" onclick="submitForm()">Сохранить</button>
                     </form>
                     }
                 </div>
@@ -60,6 +61,40 @@
         </div>
     </div>
 </div>
-@footer
+@components.footer
+
+<script>
+    function submitForm() {
+        const courseId = "@course.id";
+        const formData = {
+            name: document.getElementById('name').value,
+            shortDescription: document.getElementById('short_description').value,
+            description: document.getElementById('description').value,
+            previewImageUrl: document.getElementById('preview_image_url').value,
+            estimatedTime: parseInt(document.getElementById('estimated_time').value)
+        };
+
+        fetch(`/course/${courseId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Course updated successfully!');
+                window.location.href = `/course/${courseId}`;
+            } else {
+                alert('Failed to update course.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating course.');
+        });
+    }
+</script>
+
 </body>
 </html>

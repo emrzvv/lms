@@ -15,8 +15,12 @@
         <h2 class="text-center mb-4">Вход</h2>
         <form action="/login" method="POST">
             <div class="mb-3">
-                <label for="exampleInputUsername" class="form-label">Имя пользователя</label>
-                <input name="username" type="text" class="form-control" id="exampleInputUsername" aria-describedby="usernameHelp" value="@username"></input>
+                <label for="inputUsername" class="form-label">Имя пользователя</label>
+                <input name="username" type="text" class="form-control" id="inputUsername" aria-describedby="usernameHelp" value="@username"></input>
+            </div>
+            <div class="mb-3">
+                <label for="inputPassword" class="form-label">Пароль</label>
+                <input name="password" type="password" class="form-control" id="inputPassword" aria-describedby="passwordHelp" value=""></input>
             </div>
             @if(warning.nonEmpty) {
             <div class="alert alert-danger mb-3" role="alert">
