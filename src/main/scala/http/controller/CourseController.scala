@@ -82,7 +82,8 @@ trait CourseController {
                         body.shortDescription,
                         body.description,
                         body.previewImageUrl,
-                        body.estimatedTime)) { _ =>
+                        body.estimatedTime,
+                        body.isFree)) { _ =>
                     complete(StatusCodes.OK)
                   }
                 }

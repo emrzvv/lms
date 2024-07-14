@@ -19,7 +19,8 @@ trait CourseService {
                     shortDescription: String,
                     description: String,
                     previewImageUrl: Option[String],
-                    estimatedTime: Int): Future[UUID]
+                    estimatedTime: Int,
+                    isFree: Boolean): Future[UUID]
   def all(limit: Int, offset: Int): Future[(Seq[Course], Int)]
 }
 
@@ -64,7 +65,8 @@ class CourseServiceImpl(courseRepository: CourseRepository,
                    shortDescription: String,
                    description: String,
                    previewImageUrl: Option[String],
-                   estimatedTime: Int): Future[UUID] = {
+                   estimatedTime: Int,
+                   isFree: Boolean): Future[UUID] = {
     val oldCourse = courseRepository.getById(id)
     oldCourse.flatMap {
       case Some(course) =>
@@ -73,7 +75,8 @@ class CourseServiceImpl(courseRepository: CourseRepository,
           shortDescription = shortDescription,
           description = description,
           previewImageUrl = previewImageUrl,
-          estimatedTime = estimatedTime
+          estimatedTime = estimatedTime,
+          isFree = isFree
         )
         courseRepository.update(newCourse).flatMap(amount =>
           if (amount > 0) Future.successful(id)

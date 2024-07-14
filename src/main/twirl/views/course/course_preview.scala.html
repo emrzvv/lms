@@ -59,6 +59,10 @@
                             <label for="estimated_time">Предполагаемое время прохождение курса (часы)</label>
                             <input type="number" step="1" class="form-control" id="estimated_time" name="estimated_time" value="@course.estimatedTime">
                         </div>
+                        <div class="form-group mt-3">
+                            <label for="is_free">Курс общедоступный:</label>
+                            <input type="checkbox" class="form-check-input" id="is_free" name="is_free" @if(course.isFree) { checked }>
+                        </div>
                         <button type="button" class="btn btn-primary mt-3" onclick="submitForm()">Сохранить</button>
                     </form>
                     }
@@ -77,7 +81,8 @@
             shortDescription: document.getElementById('short_description').value,
             description: document.getElementById('description').value,
             previewImageUrl: document.getElementById('preview_image_url').value,
-            estimatedTime: parseInt(document.getElementById('estimated_time').value)
+            estimatedTime: parseInt(document.getElementById('estimated_time').value),
+            isFree: document.getElementById('is_free').checked
         };
 
         fetch(`/course/${courseId}`, {

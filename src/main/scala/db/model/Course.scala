@@ -72,8 +72,8 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
   override def all(limit: Int, offset: Int): Future[(Seq[Course], Int)] = {
     val updatedLimit = if (limit == 0) Int.MaxValue else limit
 
-    val getCoursesAction = sql"select * from courses as c order by c.created_at limit $updatedLimit offset $offset".as[Course]
-    val countCoursesAction = sql"select count(*) from courses".as[Int].head
+    val getCoursesAction = sql"select * from courses as c where c.is_free order by c.created_at limit $updatedLimit offset $offset".as[Course]
+    val countCoursesAction = sql"select count(*) from courses where is_free".as[Int].head
     val query = for {
       courses <- getCoursesAction
       count <- countCoursesAction
