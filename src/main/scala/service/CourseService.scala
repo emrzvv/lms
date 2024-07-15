@@ -1,6 +1,6 @@
 package service
 
-import db.model.{Course, CourseRepository, User}
+import db.model.{Course, CourseRepository, User, UsersCoursesMapping}
 
 import java.time.LocalDateTime
 import java.util.UUID
@@ -22,6 +22,8 @@ trait CourseService {
                     estimatedTime: Int,
                     isFree: Boolean): Future[UUID]
   def all(limit: Int, offset: Int): Future[(Seq[Course], Int)]
+  def isAbleToEdit(userId: UUID, courseId: UUID): Future[Boolean]
+  def getUsersOnCourse(courseId: UUID): Future[Seq[User]]
 }
 
 object CourseServiceImpl {
@@ -53,7 +55,8 @@ class CourseServiceImpl(courseRepository: CourseRepository,
       isPublished = false,
       isFree = false
     )
-    courseRepository.add(maybeCourse).map(_ => id)
+    val maybeUserCourseMapping = UsersCoursesMapping(userId = user.id, courseId = id, ableToEdit = true)
+    courseRepository.addWithMapping(maybeCourse, maybeUserCourseMapping)
   }
 
   def getById(id: UUID): Future[Option[Course]] = {
@@ -88,5 +91,13 @@ class CourseServiceImpl(courseRepository: CourseRepository,
 
   def all(limit: Int = 0, offset: Int = 0): Future[(Seq[Course], Int)] = {
     courseRepository.all(limit, offset)
+  }
+
+  def isAbleToEdit(userId: UUID, courseId: UUID): Future[Boolean] = {
+    courseRepository.getUserCourse(userId, courseId).map(_.exists(_.ableToEdit))
+  }
+
+  def getUsersOnCourse(courseId: UUID): Future[Seq[User]] = {
+    courseRepository.getUsersOnCourse(courseId)
   }
 }

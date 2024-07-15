@@ -1,0 +1,180 @@
+@import db.model.User
+@import db.model.Course
+@(currentUser: User, course: Course, users: Seq[User])
+
+<!DOCTYPE html>
+<html lang="en">
+@views.html.components.head()
+<style>
+    .container-with-sidebar {
+        display: flex;
+    }
+    .sidebar {
+        width: 280px;
+        padding: 1rem;
+        color: white;
+        min-height: 100vh; /* Ensure sidebar stretches full height */
+        box-sizing: border-box;
+    }
+    .main-content {
+        flex-grow: 1;
+        padding: 1rem;
+        margin-left: 0px;
+    }
+</style>
+<body>
+@views.html.components.header(currentUser)
+<div class="container-with-sidebar">
+    @if(course.creatorId == currentUser.id) {
+    @views.html.components.course_edit_sidebar(course)
+    }
+
+    <div class="main-content">
+        <div class="container mt-5">
+            <div class="row">
+                <div class="col-md-8 offset-md-2">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h3>Список пользователей курса</h3>
+                            <button class="btn btn-primary" onclick="onAddUser()">Добавить пользователя</button>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <thead>
+                                <tr>
+                                    <th>Имя пользователя</th>
+                                    <th>Email</th>
+                                    <th>Роли</th>
+                                    <th>Зарегистрирован</th>
+                                    <th>Действия</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @for(user <- users) {
+                                <tr>
+                                    <td><a href="/user/@user.id">@user.username</a></td>
+                                    <td>@user.email</td>
+                                    <td>@user.roles.mkString(", ")</td>
+                                    <td>@user.registeredAt</td>
+                                    <td>
+                                        <button class="btn btn-danger btn-sm"
+                                                onclick="onKick('@user.id')">Исключить</button>
+                                    </td>
+                                </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--@views.html.components.footer()-->
+
+<!-- Модальное окно -->
+<div class="modal fade" id="addUserModal" tabindex="-1" role="dialog" aria-labelledby="addUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addUserModalLabel">Добавить пользователя</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="searchUser"></label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="searchUser" placeholder="Введите имя пользователя" aria-describedby="searchUserBtn">
+                        <button class="btn btn-primary" type="button" onclick="searchUsers()" id="searchUserBtn">Искать</button>
+                    </div>
+                </div>
+                <div id="searchResults"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Функция для отображения модального окна
+     function onAddUser() {
+         var modal = new bootstrap.Modal(document.getElementById('addUserModal'));
+         modal.show();
+     }
+
+     // Функция для поиска пользователей
+     function searchUsers() {
+         const query = document.getElementById('searchUser').value;
+         const resultsContainer = document.getElementById('searchResults');
+         resultsContainer.innerHTML = ''; // Очистить предыдущие результаты
+
+         // Мок данные для демонстрации
+         const mockUsers = [
+             { id: '1', username: 'user1' },
+             { id: '2', username: 'user2' },
+             { id: '3', username: 'user3' },
+         ];
+
+         const filteredUsers = mockUsers.filter(user => user.username.includes(query));
+
+         if (filteredUsers.length === 0) {
+             resultsContainer.innerHTML = '<p>Пользователи не найдены</p>';
+         } else {
+             const listGroup = document.createElement('div');
+             listGroup.className = 'list-group mt-3';
+
+             filteredUsers.forEach(user => {
+                 const listItem = document.createElement('div');
+                 listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                 listItem.textContent = user.username;
+
+                 const addButton = document.createElement('button');
+                 addButton.className = 'btn btn-success btn-sm';
+                 addButton.textContent = 'Добавить';
+                 addButton.onclick = () => addUserToCourse(user.id);
+
+                 listItem.appendChild(addButton);
+                 listGroup.appendChild(listItem);
+             });
+
+             resultsContainer.appendChild(listGroup);
+         }
+     }
+
+     // Функция для добавления пользователя в курс
+     function addUserToCourse(userId) {
+         // Ваш код для добавления пользователя в курс
+         alert('Пользователь с ID ' + userId + ' добавлен в курс');
+     }
+
+    function onKick(userId) {
+            const courseId = "@course.id";
+
+            const formData = {
+                id: userId,
+            };
+
+            fetch(`/course/${courseId}/kick`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Пользователь удалён!');
+                } else {
+                    alert('Ошибка при удалении пользователя.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating course.');
+            });
+        }
+</script>
+@views.html.components.js()
+</body>
+</html>

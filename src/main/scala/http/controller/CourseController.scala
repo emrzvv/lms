@@ -10,7 +10,7 @@ import http.auth.JwtSecurity
 import http.model.UpdateCourseRequest
 import utils.Serializers
 import views.html.components.{footer, head, header}
-import views.html.course.{course_preview, courses_all, newcourse}
+import views.html.course.{course_preview, courses_all, newcourse, course_users}
 
 import java.time.LocalDateTime
 import java.util.UUID
@@ -89,6 +89,23 @@ trait CourseController {
                 }
               }
             }
+        } ~
+        path(JavaUUID / "users") { courseId =>
+          get {
+            authenticatedWithRole("tutor") { tutor =>
+              onSuccess(courseService.isAbleToEdit(tutor.id, courseId)) {
+                case true =>
+                  onSuccess(courseService.getById(courseId)) {
+                    case Some(course) =>
+                      onSuccess(courseService.getUsersOnCourse(courseId)) { users =>
+                        complete(course_users(tutor, course, users))
+                      }
+                    case None => complete(StatusCodes.NotFound)
+                  }
+                case false => complete(StatusCodes.Forbidden)
+              }
+            }
+          }
         }
     }
   )
