@@ -11,67 +11,90 @@
         max-height: 300px;
         object-fit: cover;
     }
+    .container-with-sidebar {
+        display: flex;
+    }
+    .sidebar {
+        width: 280px;
+        padding: 1rem;
+        color: white;
+        min-height: 100vh; /* Ensure sidebar stretches full height */
+        box-sizing: border-box;
+    }
+    .main-content {
+        flex-grow: 1;
+        padding: 1rem;
+        margin-left: 0px;
+    }
 </style>
 <body>
 @views.html.components.header(currentUser)
-<div class="container mt-5">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <img src="@course.previewImageUrl.getOrElse("")" class="card-img-top course-preview-image" alt="Course Image">
-                <div class="card-body">
-                    <h3 class="card-title">@course.name</h3>
-                    <p class="card-text">@course.description</p>
-                    <p class="card-text"><small class="text-muted">Время прохождения: @course.estimatedTime ч.</small></p>
-                    @if(course.creatorId != currentUser.id) {
-                    <button class="btn btn-success">Поступить на курс</button>
-                    }
-                    @if(currentUser.roles.contains("admin")) {
-                    @if(!course.isPublished) {
-                    <form action="/publish/@course.id" method="POST">
-                        <button type="submit" class="btn btn-primary">Опубликовать курс</button>
-                    </form>
-                    } else {
-                    <form action="/hide/@course.id" method="POST">
-                        <button type="submit" class="btn btn-warning">Скрыть курс</button>
-                    </form>
-                    }
-                    }
-                    @if(course.creatorId == currentUser.id) {
-                    <form id="courseForm">
-                        <div class="form-group mt-3">
-                            <label for="name">Название курса:</label>
-                            <input type="text" class="form-control" id="name" name="name" value="@course.name">
+<div class="container-with-sidebar">
+    @if(course.creatorId == currentUser.id) {
+    @views.html.components.course_edit_sidebar(course)
+    }
+
+    <div class="main-content">
+        <div class="container mt-5">
+            <div class="row">
+                <div class="col-md-8 offset-md-2">
+                    <div class="card">
+                        <img src="@course.previewImageUrl.getOrElse("")" class="card-img-top course-preview-image" alt="Course Image">
+                        <div class="card-body">
+                            <h3 class="card-title">@course.name</h3>
+                            <p class="card-text">@course.description</p>
+                            <p class="card-text"><small class="text-muted">Время прохождения: @course.estimatedTime ч.</small></p>
+                            @if(course.creatorId != currentUser.id) {
+                            <button class="btn btn-success">Поступить на курс</button>
+                            }
+                            @if(currentUser.roles.contains("admin")) {
+                            @if(!course.isPublished) {
+                            <form action="/publish/@course.id" method="POST">
+                                <button type="submit" class="btn btn-primary">Опубликовать курс</button>
+                            </form>
+                            } else {
+                            <form action="/hide/@course.id" method="POST">
+                                <button type="submit" class="btn btn-warning">Скрыть курс</button>
+                            </form>
+                            }
+                            }
+                            @if(course.creatorId == currentUser.id) {
+                            <form id="courseForm">
+                                <div class="form-group mt-3">
+                                    <label for="name">Название курса:</label>
+                                    <input type="text" class="form-control" id="name" name="name" value="@course.name">
+                                </div>
+                                <div class="form-group mt-3">
+                                    <label for="short_description">Краткое описание (отображается в карточке, не более 128 символов):</label>
+                                    <textarea class="form-control" id="short_description" name="short_description" rows="3">@course.shortDescription</textarea>
+                                </div>
+                                <div class="form-group mt-3">
+                                    <label for="description">Полное описание:</label>
+                                    <textarea class="form-control" id="description" name="description" rows="5">@course.description</textarea>
+                                </div>
+                                <div class="form-group mt-3">
+                                    <label for="preview_image_url">Ссылка на картинку курса (отображается в карточке и на странице курса):</label>
+                                    <input type="text" class="form-control" id="preview_image_url" name="preview_image_url" value="@course.previewImageUrl">
+                                </div>
+                                <div class="form-group mt-3">
+                                    <label for="estimated_time">Предполагаемое время прохождение курса (часы)</label>
+                                    <input type="number" step="1" class="form-control" id="estimated_time" name="estimated_time" value="@course.estimatedTime">
+                                </div>
+                                <div class="form-group mt-3">
+                                    <label for="is_free">Курс общедоступный:</label>
+                                    <input type="checkbox" class="form-check-input" id="is_free" name="is_free" @if(course.isFree) { checked }>
+                                </div>
+                                <button type="button" class="btn btn-primary mt-3" onclick="submitForm()">Сохранить</button>
+                            </form>
+                            }
                         </div>
-                        <div class="form-group mt-3">
-                            <label for="short_description">Краткое описание (отображается в карточке, не более 128 символов):</label>
-                            <textarea class="form-control" id="short_description" name="short_description" rows="3">@course.shortDescription</textarea>
-                        </div>
-                        <div class="form-group mt-3">
-                            <label for="description">Полное описание:</label>
-                            <textarea class="form-control" id="description" name="description" rows="5">@course.description</textarea>
-                        </div>
-                        <div class="form-group mt-3">
-                            <label for="preview_image_url">Ссылка на картинку курса (отображается в карточке и на странице курса):</label>
-                            <input type="text" class="form-control" id="preview_image_url" name="preview_image_url" value="@course.previewImageUrl">
-                        </div>
-                        <div class="form-group mt-3">
-                            <label for="estimated_time">Предполагаемое время прохождение курса (часы)</label>
-                            <input type="number" step="1" class="form-control" id="estimated_time" name="estimated_time" value="@course.estimatedTime">
-                        </div>
-                        <div class="form-group mt-3">
-                            <label for="is_free">Курс общедоступный:</label>
-                            <input type="checkbox" class="form-check-input" id="is_free" name="is_free" @if(course.isFree) { checked }>
-                        </div>
-                        <button type="button" class="btn btn-primary mt-3" onclick="submitForm()">Сохранить</button>
-                    </form>
-                    }
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-@views.html.components.footer()
+<!--@views.html.components.footer()-->
 
 <script>
     function submitForm() {
@@ -106,6 +129,6 @@
         });
     }
 </script>
-
+@views.html.components.js()
 </body>
 </html>

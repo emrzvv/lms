@@ -29,6 +29,8 @@ libraryDependencies ++= Seq(
   "org.json4s" %% "json4s-jackson" % json4sVersion,
   "de.heikoseeberger" %% "akka-http-json4s" % "1.39.2",
   "org.webjars.npm" % "bootstrap" % "5.3.3",
+  "org.webjars.npm" % "bootstrap-icons" % "1.11.3",
+  "org.webjars" % "popper.js" % "2.11.7",
   "org.mdedetrich" %% "akka-http-webjars" % "0.5.0",
   "com.github.jwt-scala" %% "jwt-core"  % jwtVersion,
   "com.typesafe.play" %% "twirl-api" % "1.6.8",

@@ -1,19 +1,35 @@
 @import db.model.User
 @(currentUser: User)
 
-<header class="p-3 bg-dark text-white">
+<header class="p-3 bg-dark">
     <div class="container">
         <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+            <a href="/" class="d-flex align-items-center mb-2 mb-lg-0 link-body-emphasis text-decoration-none text-white">
+                <i class="bi bi-mortarboard-fill me-2" style="font-size: 2rem; color:white;"></i>
+            </a>
+
             <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0">
-                <li><a href="/" class="nav-link px-2 text-white">Главная</a></li>
-                <li><a href="/course/all" class="nav-link px-2 text-white">Курсы</a></li>
+                <li><a href="/" class="nav-link px-2  text-white">Главная</a></li>
+                <li><a href="/course/all" class="nav-link px-2  text-white">Курсы</a></li>
             </ul>
-            <div class="text-end">
-                @if(currentUser.roles.contains("tutor")) {
-                <a href="/course/new" class="btn btn-secondary me-2" role="button">Создать курс</a>
-                }
-                <a href="/user/@currentUser.id" class="btn btn-primary me-2" role="button">Профиль</a>
-                <a href="/logout" class="btn btn-outline-light">Выйти</a>
+
+            <form class="col-12 col-lg-auto mb-3 mb-lg-0 me-lg-3" role="search">
+                <input type="search" class="form-control" placeholder="Искать..." aria-label="Search">
+            </form>
+
+            <div class="dropdown text-end">
+                <a href="#" class="d-block link-body-emphasis text-white text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-list" style="font-size: 2rem; color:white;"></i>
+                </a>
+                <ul class="dropdown-menu text-small" style="color:white;">
+                    @if(currentUser.roles.contains("tutor")) {
+                    <li><a class="dropdown-item" href="/course/new">Создать курс</a></li>
+                    }
+                    <li><a class="dropdown-item" href="#">Моё обучение</a></li>
+                    <li><a class="dropdown-item" href="/user/@currentUser.id">Профиль</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="/logout">Выйти</a></li>
+                </ul>
             </div>
         </div>
     </div>

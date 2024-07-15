@@ -59,10 +59,8 @@ viewingUser: User
             }
         </div>
     </div>
-</div>
-@if(currentUser.id == viewingUser.id) {
-<div class="container mt-3">
-    <div class="row">
+    @if(currentUser.id == viewingUser.id) {
+    <div class="row mt-5">
         <div class="col-md-8 offset-md-2">
             <div class="card-group">
                 <div class="card">
@@ -74,10 +72,10 @@ viewingUser: User
             </div>
         </div>
     </div>
+    }
 </div>
-}
 
-
-@views.html.components.footer()
+<!--@views.html.components.footer()-->
 </body>
+@views.html.components.js()
 </html>
