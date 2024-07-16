@@ -1,5 +1,6 @@
 package service
 
+import akka.http.scaladsl.model.{StatusCode, StatusCodes}
 import db.model.{Course, CourseRepository, User, UsersCoursesMapping}
 
 import java.time.LocalDateTime
@@ -24,6 +25,8 @@ trait CourseService {
   def all(limit: Int, offset: Int): Future[(Seq[Course], Int)]
   def isAbleToEdit(userId: UUID, courseId: UUID): Future[Boolean]
   def getUsersOnCourse(courseId: UUID): Future[Seq[User]]
+  def getUsersOnCourseWithRights(courseId: UUID): Future[Seq[(User, Boolean)]]
+  def addUserToCourse(userId: UUID, courseId: UUID): Future[Int]
 }
 
 object CourseServiceImpl {
@@ -99,5 +102,13 @@ class CourseServiceImpl(courseRepository: CourseRepository,
 
   def getUsersOnCourse(courseId: UUID): Future[Seq[User]] = {
     courseRepository.getUsersOnCourse(courseId)
+  }
+
+  def getUsersOnCourseWithRights(courseId: UUID): Future[(Seq[(User, Boolean)])] = {
+    courseRepository.getUsersOnCourseWithRights(courseId)
+  }
+
+  override def addUserToCourse(userId: UUID, courseId: UUID): Future[Int] = {
+    courseRepository.addToMapping(userId, courseId)
   }
 }

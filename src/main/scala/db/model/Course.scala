@@ -29,6 +29,8 @@ trait CourseRepository {
   def all(limit: Int, offset: Int): Future[(Seq[Course], Int)]
   def getUserCourse(userId: UUID, courseId: UUID): Future[Option[UsersCoursesMapping]]
   def getUsersOnCourse(courseId: UUID): Future[Seq[User]]
+  def getUsersOnCourseWithRights(courseId: UUID): Future[Seq[(User, Boolean)]]
+  def addToMapping(userId: UUID, courseId: UUID): Future[Int]
 }
 
 object CourseRepositoryImpl {
@@ -37,6 +39,7 @@ object CourseRepositoryImpl {
 }
 
 class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tables, executionContext: ExecutionContext) extends CourseRepository {
+
   import profile.api._
   import tables.coursesQuery
   import tables.usersCoursesQuery
@@ -101,44 +104,25 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
          """.as[User]
     db.run(query)
   }
-}
 
-object Results {
-  implicit val getCourseResult: GetResult[Course] = GetResult(r =>
-    Course(
-      r.nextObject().asInstanceOf[UUID],
-      r.nextString(),
-      r.nextObject().asInstanceOf[UUID],
-      r.nextString(),
-      r.nextString(),
-      r.nextStringOption(),
-      r.nextInt(),
-      r.nextTimestamp().toLocalDateTime,
-      r.nextBoolean(),
-      r.nextBoolean()
-    )
-  )
+  override def getUsersOnCourseWithRights(courseId: UUID): Future[Seq[(User, Boolean)]] = {
+    val query =
+      sql"""
+           select u.id,
+           u.username,
+           u.email,
+           u.password_hash,
+           u.roles,
+           u.registered_at,
+           uc.able_to_edit from users_courses as uc
+           join users as u on uc.user_id = u.id where uc.course_id = ${courseId.toString}::uuid
+         """.as[(User, Boolean)]
+    db.run(query)
+  }
 
-  implicit val getUsersCoursesMapping: GetResult[UsersCoursesMapping] = GetResult(r =>
-    UsersCoursesMapping(
-      r.nextObject().asInstanceOf[UUID],
-      r.nextObject().asInstanceOf[UUID],
-      r.nextBoolean()
-    )
-  )
 
-  implicit val strList = GetResult[List[String]] (
-    r => (1 to r.numColumns).map(_ => r.nextString()).toList
-  )
-
-  implicit val getUserResult: GetResult[User] = GetResult((r: PositionedResult) =>
-    User(
-      r.nextObject().asInstanceOf[UUID],
-      r.nextString(),
-      r.nextString(),
-      r.nextString(),
-      r.nextString().split(" ").toList,
-      r.nextTimestamp().toLocalDateTime.toLocalDate
-    )
-  )
+  override def addToMapping(userId: UUID, courseId: UUID): Future[Int] = {
+    val maybeMapping = UsersCoursesMapping(userId, courseId, ableToEdit = false)
+    db.run(usersCoursesQuery += maybeMapping)
+  }
 }

@@ -97,12 +97,28 @@ trait CourseController {
                 case true =>
                   onSuccess(courseService.getById(courseId)) {
                     case Some(course) =>
-                      onSuccess(courseService.getUsersOnCourse(courseId)) { users =>
+                      onSuccess(courseService.getUsersOnCourseWithRights(courseId)) { users =>
                         complete(course_users(tutor, course, users))
                       }
                     case None => complete(StatusCodes.NotFound)
                   }
                 case false => complete(StatusCodes.Forbidden)
+              }
+            }
+          } ~ parameters("id".as[UUID]) { userId =>
+            put {
+              authenticatedWithRole("tutor") { tutor =>
+                onSuccess(courseService.isAbleToEdit(tutor.id, courseId)) {
+                  case true =>
+                    onSuccess(courseService.getById(courseId)) {
+                      case Some(_) =>
+                        onSuccess(courseService.addUserToCourse(userId, courseId)) { _ =>
+                          complete(StatusCodes.OK)
+                        }
+                      case None => complete(StatusCodes.NotFound)
+                    }
+                  case false => complete(StatusCodes.Forbidden)
+                }
               }
             }
           }

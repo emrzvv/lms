@@ -1,6 +1,6 @@
 @import db.model.User
 @import db.model.Course
-@(currentUser: User, course: Course, users: Seq[User])
+@(currentUser: User, course: Course, users: Seq[(User, Boolean)])
 
 <!DOCTYPE html>
 <html lang="en">
@@ -52,13 +52,19 @@
                                 <tbody>
                                 @for(user <- users) {
                                 <tr>
-                                    <td><a href="/user/@user.id">@user.username</a></td>
-                                    <td>@user.email</td>
-                                    <td>@user.roles.mkString(", ")</td>
-                                    <td>@user.registeredAt</td>
+                                    <td><a href="/user/@user._1.id">@user._1.username</a></td>
+                                    <td>@user._1.email</td>
+                                    <td>@user._1.roles.mkString(", ")</td>
+                                    <td>@user._1.registeredAt</td>
                                     <td>
-                                        <button class="btn btn-danger btn-sm"
-                                                onclick="onKick('@user.id')">Исключить</button>
+                                        <div class="btn-group btn-group-sm" role="group" aria-label="Actions">
+                                            <button class="btn btn-danger"
+                                                    onclick="onKick('@user._1.id')"
+                                                    @if(user._1.id == currentUser.id) { disabled } >Исключить</button>
+                                            <button class="btn btn-warning"
+                                                    onclick="onGrantAccess('@user._1.id')"
+                                                    @if(user._1.id == currentUser.id || user._2) { disabled } >Дать права</button>
+                                        </div>
                                     </td>
                                 </tr>
                                 }
@@ -104,48 +110,65 @@
      }
 
      // Функция для поиска пользователей
-     function searchUsers() {
-         const query = document.getElementById('searchUser').value;
-         const resultsContainer = document.getElementById('searchResults');
-         resultsContainer.innerHTML = ''; // Очистить предыдущие результаты
+    async function searchUsers() {
+        const query = document.getElementById('searchUser').value;
+        const resultsContainer = document.getElementById('searchResults');
+        resultsContainer.innerHTML = ''; // Очистить предыдущие результаты
 
-         // Мок данные для демонстрации
-         const mockUsers = [
-             { id: '1', username: 'user1' },
-             { id: '2', username: 'user2' },
-             { id: '3', username: 'user3' },
-         ];
+        try {
+            // Выполнить запрос к серверу для фильтрации пользователей
+            const response = await fetch(`/user/filter?query=${encodeURIComponent(query)}`);
+            if (!response.ok) {
+                throw new Error('Ошибка при выполнении запроса');
+            }
 
-         const filteredUsers = mockUsers.filter(user => user.username.includes(query));
+            const filteredUsers = await response.json();
 
-         if (filteredUsers.length === 0) {
-             resultsContainer.innerHTML = '<p>Пользователи не найдены</p>';
-         } else {
-             const listGroup = document.createElement('div');
-             listGroup.className = 'list-group mt-3';
+            if (filteredUsers.length === 0) {
+                resultsContainer.innerHTML = '<p>Пользователи не найдены</p>';
+            } else {
+                const listGroup = document.createElement('div');
+                listGroup.className = 'list-group mt-3';
 
-             filteredUsers.forEach(user => {
-                 const listItem = document.createElement('div');
-                 listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
-                 listItem.textContent = user.username;
+                filteredUsers.forEach(user => {
+                    const listItem = document.createElement('div');
+                    listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    listItem.textContent = user.username;
 
-                 const addButton = document.createElement('button');
-                 addButton.className = 'btn btn-success btn-sm';
-                 addButton.textContent = 'Добавить';
-                 addButton.onclick = () => addUserToCourse(user.id);
+                    const addButton = document.createElement('button');
+                    addButton.className = 'btn btn-success btn-sm';
+                    addButton.textContent = 'Добавить';
+                    addButton.onclick = () => addUserToCourse(user.id);
 
-                 listItem.appendChild(addButton);
-                 listGroup.appendChild(listItem);
-             });
+                    listItem.appendChild(addButton);
+                    listGroup.appendChild(listItem);
+                });
 
-             resultsContainer.appendChild(listGroup);
-         }
-     }
+                resultsContainer.appendChild(listGroup);
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
+            resultsContainer.innerHTML = '<p>Произошла ошибка при выполнении запроса</p>';
+        }
+    }
+
 
      // Функция для добавления пользователя в курс
      function addUserToCourse(userId) {
-         // Ваш код для добавления пользователя в курс
-         alert('Пользователь с ID ' + userId + ' добавлен в курс');
+         const courseId = "@course.id"
+         fetch(`/course/${courseId}/users?id=${userId}`, {
+                method: 'PUT',
+         }).then(response => {
+                if (response.ok) {
+                    alert('Пользователь добавлен!');
+                } else {
+                    alert('Ошибка при добавлении пользователя.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating course.');
+            });
      }
 
     function onKick(userId) {
@@ -155,12 +178,8 @@
                 id: userId,
             };
 
-            fetch(`/course/${courseId}/kick`, {
+            fetch(`/course/${courseId}/users?id=${userId}`, {
                 method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
             })
             .then(response => {
                 if (response.ok) {

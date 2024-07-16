@@ -98,6 +98,17 @@ trait UserController {
         }
       }
     } ~
+    path("user" / "filter") {
+      parameters("query") { query =>
+        get {
+          authenticatedWithRole("user") {_ =>
+            onSuccess(userService.searchUsers(query)) { users =>
+              complete(users) // TODO: distinct with course users
+            }
+          }
+        }
+      }
+    } ~
     path("user" / JavaUUID) { id =>
       get {
         authenticatedWithRole("user") { currentUser =>
