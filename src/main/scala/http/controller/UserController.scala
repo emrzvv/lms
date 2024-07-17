@@ -98,17 +98,38 @@ trait UserController {
         }
       }
     } ~
+    path("user" / "filter") {
+      parameters("query", "courseId".as[UUID].optional) { (query, courseId) =>
+        get {
+          authenticatedWithRole("user") {_ =>
+            val courseUsers: Future[Seq[User]] = courseId match {
+              case Some(id) => courseService.getUsersOnCourse(id)
+              case None => Future(Seq.empty)
+            }
+            val allUsers = userService.searchUsers(query)
+            val result = for {
+              course <- courseUsers
+              all <- allUsers
+            } yield all.toSet.diff(course.toSet).toSeq.sortBy(_.username)
+
+            onSuccess(result) { users =>
+              complete(users)
+            }
+          }
+        }
+      }
+    } ~
     path("user" / JavaUUID) { id =>
       get {
         authenticatedWithRole("user") { currentUser =>
-          onSuccess(userService.getUserById(id)) {
+          onSuccess(userService.getById(id)) {
             case Some(viewingUser) => complete(profile(currentUser, viewingUser))
             case None => complete(StatusCodes.NotFound)
           }
         }
       } ~ post {
         authenticatedWithRole("user") { currentUser =>
-          onSuccess(userService.getUserById(id)) {
+          onSuccess(userService.getById(id)) {
             case Some(viewingUser) =>
               if (viewingUser.id == currentUser.id || currentUser.roles.contains("admin")) {
                 profileForm(currentUser, viewingUser)
@@ -124,7 +145,7 @@ trait UserController {
       post {
         parameters("action", "role") { (action, role) =>
           authenticatedWithRole("admin") { admin =>
-            onSuccess(userService.getUserById(id)) {
+            onSuccess(userService.getById(id)) {
               case Some(updatingUser) =>
                 if (action == "add") {
                   val updatedRoles = (role :: updatingUser.roles).distinct

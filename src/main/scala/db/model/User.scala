@@ -26,6 +26,7 @@ trait UserRepository {
   def getByUsername(username: String): Future[Option[User]]
   def getByAuthData(auth: Auth): Future[Option[User]]
   def all(limit: Int, offset: Int): Future[Seq[User]]
+  def matchByUsernameOrEmail(query: String): Future[Seq[User]]
 }
 
 object UserRepositoryImpl {
@@ -36,6 +37,7 @@ object UserRepositoryImpl {
 class UserRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tables) extends UserRepository {
   import profile.api._
   import tables.usersQuery
+  import Results._
 
   override def add(user: User): Future[Int] = db.run {
     usersQuery += user
@@ -59,6 +61,15 @@ class UserRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Table
 
   override def all(limit: Int, offset: Int): Future[Seq[User]] = db.run {
     usersQuery.drop(offset).take(limit).result
+  }
+
+  override def matchByUsernameOrEmail(query: String): Future[Seq[User]] = {
+    val action = sql"""
+      select * from users
+      where username like ${"%" + query + "%"}
+            or email like ${"%" + query + "%"}
+    """.as[User]
+    db.run(action)
   }
 }
 

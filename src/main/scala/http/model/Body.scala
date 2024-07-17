@@ -4,4 +4,5 @@ case class UpdateCourseRequest(name: String,
                                 shortDescription: String,
                                 description: String,
                                 previewImageUrl: Option[String],
-                                estimatedTime: Int)
+                                estimatedTime: Int,
+                                isFree: Boolean)

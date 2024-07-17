@@ -16,7 +16,8 @@ trait UserService {
   def createUser(username: String, email: String, password: String): Future[User]
   def validateUser(username: String, password: String): Future[Option[User]]
   def updateUser(updatedUser: User): Future[Int]
-  def getUserById(id: UUID): Future[Option[User]]
+  def getById(id: UUID): Future[Option[User]]
+  def searchUsers(query: String): Future[Seq[User]]
 }
 
 object UserServiceImpl {
@@ -53,7 +54,11 @@ class UserServiceImpl(userRepository: UserRepository, executionContext: Executio
     userRepository.update(updatedUser)
   }
 
-  def getUserById(id: UUID): Future[Option[User]] = {
+  def getById(id: UUID): Future[Option[User]] = {
     userRepository.getById(id)
+  }
+
+  def searchUsers(query: String): Future[Seq[User]] = {
+    userRepository.matchByUsernameOrEmail(query)
   }
 }
