@@ -26,11 +26,13 @@ trait CourseRepository {
   def addWithMapping(course: Course, mapping: UsersCoursesMapping): Future[UUID]
   def update(course: Course): Future[Int]
   def getById(uuid: UUID): Future[Option[Course]]
-  def all(limit: Int, offset: Int): Future[(Seq[Course], Int)]
+  def allFreeAndPublished(limit: Int, offset: Int): Future[(Seq[Course], Int)]
   def getUserCourse(userId: UUID, courseId: UUID): Future[Option[UsersCoursesMapping]]
   def getUsersOnCourse(courseId: UUID): Future[Seq[User]]
   def getUsersOnCourseWithRights(courseId: UUID): Future[Seq[(User, Boolean)]]
   def addToMapping(userId: UUID, courseId: UUID): Future[Int]
+  def removeFromMapping(userId: UUID, courseId: UUID): Future[Int]
+  def setValuesInMapping(userId: UUID, courseId: UUID, ableToEdit: Boolean): Future[Int]
 }
 
 object CourseRepositoryImpl {
@@ -70,11 +72,11 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
     coursesQuery.filter(_.id === uuid).result.headOption
   }
 
-  override def all(limit: Int, offset: Int): Future[(Seq[Course], Int)] = {
+  override def allFreeAndPublished(limit: Int, offset: Int): Future[(Seq[Course], Int)] = {
     val updatedLimit = if (limit == 0) Int.MaxValue else limit
 
-    val getCoursesAction = sql"select * from courses as c where c.is_free order by c.created_at limit $updatedLimit offset $offset".as[Course]
-    val countCoursesAction = sql"select count(*) from courses where is_free".as[Int].head // TODO: published. two methods for viewing all courses & free and published
+    val getCoursesAction = sql"select * from courses as c where c.is_free and c.is_published order by c.created_at limit $updatedLimit offset $offset".as[Course]
+    val countCoursesAction = sql"select count(*) from courses where is_free and is_published".as[Int].head
     val query = for {
       courses <- getCoursesAction
       count <- countCoursesAction
@@ -124,5 +126,26 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
   override def addToMapping(userId: UUID, courseId: UUID): Future[Int] = {
     val maybeMapping = UsersCoursesMapping(userId, courseId, ableToEdit = false)
     db.run(usersCoursesQuery += maybeMapping)
+  }
+
+
+  override def removeFromMapping(userId: UUID, courseId: UUID): Future[Int] = {
+    val query =
+      sqlu"""
+           delete from users_courses as uc
+           where uc.user_id = ${userId.toString}::uuid and uc.course_id = ${courseId.toString}::uuid
+         """
+    db.run(query)
+  }
+
+
+  override def setValuesInMapping(userId: UUID, courseId: UUID, ableToEdit: Boolean): Future[Int] = {
+    val query =
+      sqlu"""
+        update users_courses as uc
+        set able_to_edit = $ableToEdit
+        where uc.user_id = ${userId.toString}::uuid and uc.course_id = ${courseId.toString}::uuid
+      """
+    db.run(query)
   }
 }

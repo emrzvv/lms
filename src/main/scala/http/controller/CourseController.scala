@@ -2,6 +2,7 @@ package http.controller
 
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes, headers}
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import component.{ActorSystemComponent, Repositories, Services}
 import db.model.{Course, User}
@@ -10,7 +11,7 @@ import http.auth.JwtSecurity
 import http.model.UpdateCourseRequest
 import utils.Serializers
 import views.html.components.{footer, head, header}
-import views.html.course.{course_preview, courses_all, newcourse, course_users}
+import views.html.course.{course_preview, course_users, courses_all, newcourse}
 
 import java.time.LocalDateTime
 import java.util.UUID
@@ -52,17 +53,17 @@ trait CourseController {
           }
         )
       } ~
-        path("all") {
+        path("allFreeAndPublished") {
           get {
             parameters("limit".as[Int].optional, "offset".as[Int].optional) { (limit, offset) =>
               authenticatedWithRole("user") { user =>
-                onSuccess(courseService.all(limit.getOrElse(9), offset.getOrElse(0))) { (courses, totalCourses) =>
+                onSuccess(courseService.allFreeAndPublished(limit.getOrElse(9), offset.getOrElse(0))) { (courses, totalCourses) =>
                   complete(courses_all(user, courses, limit.getOrElse(9), offset.getOrElse(0), totalCourses))
                 }
               }
             }
           }
-        }~
+        } ~
         path(JavaUUID) { id =>
           get {
             authenticatedWithRole("user") { user =>
@@ -93,32 +94,99 @@ trait CourseController {
         path(JavaUUID / "users") { courseId =>
           get {
             authenticatedWithRole("tutor") { tutor =>
-              onSuccess(courseService.isAbleToEdit(tutor.id, courseId)) {
-                case true =>
-                  onSuccess(courseService.getById(courseId)) {
+              onSuccess {
+                for {
+                  ableToEdit <- courseService.isAbleToEdit(tutor.id, courseId) if ableToEdit
+                  courseOpt  <- courseService.getById(courseId)
+                  result     <- courseOpt match {
                     case Some(course) =>
-                      onSuccess(courseService.getUsersOnCourseWithRights(courseId)) { users =>
+                      courseService.getUsersOnCourseWithRights(courseId).map { users =>
                         complete(course_users(tutor, course, users))
                       }
-                    case None => complete(StatusCodes.NotFound)
+                    case None => Future.successful(complete(StatusCodes.NotFound))
                   }
-                case false => complete(StatusCodes.Forbidden)
+                } yield result
+              } {
+                case result: Route => result
+                case _             => complete(StatusCodes.Forbidden)
               }
             }
           } ~ parameters("id".as[UUID]) { userId =>
             put {
               authenticatedWithRole("tutor") { tutor =>
-                onSuccess(courseService.isAbleToEdit(tutor.id, courseId)) {
-                  case true =>
-                    onSuccess(courseService.getById(courseId)) {
-                      case Some(_) =>
-                        onSuccess(courseService.addUserToCourse(userId, courseId)) { _ =>
-                          complete(StatusCodes.OK)
-                        }
-                      case None => complete(StatusCodes.NotFound)
+                onSuccess {
+                  for {
+                    ableToEdit <- courseService.isAbleToEdit(tutor.id, courseId) if ableToEdit
+                    courseOpt  <- courseService.getById(courseId)
+                    result     <- courseOpt match {
+                      case Some(_) => courseService.addUserToCourse(userId, courseId).map(_ => StatusCodes.OK)
+                      case None    => Future.successful(StatusCodes.NotFound)
                     }
-                  case false => complete(StatusCodes.Forbidden)
+                  } yield result
+                } {
+                  case StatusCodes.OK        => complete(StatusCodes.OK)
+                  case StatusCodes.NotFound  => complete(StatusCodes.NotFound)
+                  case StatusCodes.Forbidden => complete(StatusCodes.Forbidden)
                 }
+              }
+            } ~
+              delete {
+                authenticatedWithRole("tutor") { tutor =>
+                  onSuccess {
+                    for {
+                      ableToEdit <- courseService.isAbleToEdit(tutor.id, courseId) if ableToEdit
+                      courseOpt  <- courseService.getById(courseId)
+                      result     <- courseOpt match {
+                        case Some(_) => courseService.removeUserFromCourse(userId, courseId).map(_ => StatusCodes.OK)
+                        case None    => Future.successful(StatusCodes.NotFound)
+                      }
+                    } yield result
+                  } {
+                    case StatusCodes.OK         => complete(StatusCodes.OK)
+                    case StatusCodes.NotFound   => complete(StatusCodes.NotFound)
+                    case StatusCodes.Forbidden  => complete(StatusCodes.Forbidden)
+                  }
+                }
+              }
+          }
+        } ~
+        path(JavaUUID / "users" / "grant_access") { courseId =>
+          parameters("id".as[UUID]) { userId =>
+            put {
+              authenticatedWithRole("tutor") { tutor =>
+                onSuccess {
+                  for {
+                    ableToEdit <- courseService.isAbleToEdit(tutor.id, courseId) if ableToEdit
+                    user <- userService.getById(userId) if user.exists(_.roles.contains("tutor"))
+                    courseOpt <- courseService.getById(courseId)
+                    result <- courseOpt match {
+                      case Some(_) => courseService.grantCourseAccessToUser(userId, courseId).map(_ => StatusCodes.OK)
+                      case None => Future.successful(StatusCodes.NotFound)
+                    }
+                  } yield result
+                } {
+                  case StatusCodes.OK        => complete(StatusCodes.OK)
+                  case StatusCodes.NotFound  => complete(StatusCodes.NotFound)
+                  case StatusCodes.Forbidden => complete(StatusCodes.Forbidden)
+                }
+              }
+            }
+          }
+        } ~
+        path(JavaUUID / "publish") { courseId =>
+          put {
+            authenticatedWithRole("admin") { admin =>
+              onSuccess(courseService.publishCourse(courseId)) { _ =>
+                complete(StatusCodes.OK)
+              }
+            }
+          }
+        } ~
+        path(JavaUUID / "hide") { courseId =>
+          put {
+            authenticatedWithRole("admin") { admin =>
+              onSuccess(courseService.hideCourse(courseId)) { _ =>
+                complete(StatusCodes.OK)
               }
             }
           }

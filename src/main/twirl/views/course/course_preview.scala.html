@@ -48,15 +48,11 @@
                             <button class="btn btn-success">Поступить на курс</button>
                             }
                             @if(currentUser.roles.contains("admin")) {
-                            @if(!course.isPublished) {
-                            <form action="/publish/@course.id" method="POST">
-                                <button type="submit" class="btn btn-primary">Опубликовать курс</button>
-                            </form>
-                            } else {
-                            <form action="/hide/@course.id" method="POST">
-                                <button type="submit" class="btn btn-warning">Скрыть курс</button>
-                            </form>
-                            }
+                                @if(!course.isPublished) {
+                                <button type="submit" class="btn btn-primary" onclick="publish()">Опубликовать курс</button>
+                                } else {
+                                <button type="submit" class="btn btn-warning" onclick="hide()">Скрыть курс</button>
+                                }
                             }
                             @if(course.creatorId == currentUser.id) {
                             <form id="courseForm">
@@ -127,6 +123,44 @@
             console.error('Error:', error);
             alert('Error updating course.');
         });
+    }
+
+    function publish() {
+        const courseId = "@course.id";
+        fetch(`/course/${courseId}/publish`, {
+                method: 'PUT',
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Курс опубликован!');
+                    window.location.href = `/course/${courseId}`;
+                } else {
+                    alert('Ошибка при публикации курса');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating course.');
+            });
+    }
+
+    function hide() {
+        const courseId = "@course.id";
+        fetch(`/course/${courseId}/hide`, {
+                method: 'PUT',
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Курс скрыт!');
+                    window.location.href = `/course/${courseId}`;
+                } else {
+                    alert('Ошибка при скрытии курса');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating course.');
+            });
     }
 </script>
 @views.html.components.js()

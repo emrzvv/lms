@@ -22,11 +22,15 @@ trait CourseService {
                     previewImageUrl: Option[String],
                     estimatedTime: Int,
                     isFree: Boolean): Future[UUID]
-  def all(limit: Int, offset: Int): Future[(Seq[Course], Int)]
+  def allFreeAndPublished(limit: Int, offset: Int): Future[(Seq[Course], Int)]
   def isAbleToEdit(userId: UUID, courseId: UUID): Future[Boolean]
   def getUsersOnCourse(courseId: UUID): Future[Seq[User]]
   def getUsersOnCourseWithRights(courseId: UUID): Future[Seq[(User, Boolean)]]
   def addUserToCourse(userId: UUID, courseId: UUID): Future[Int]
+  def removeUserFromCourse(userId: UUID, courseId: UUID): Future[Int]
+  def grantCourseAccessToUser(userId: UUID, courseId: UUID): Future[Int]
+  def publishCourse(courseId: UUID): Future[Int]
+  def hideCourse(courseId: UUID): Future[Int]
 }
 
 object CourseServiceImpl {
@@ -92,8 +96,8 @@ class CourseServiceImpl(courseRepository: CourseRepository,
     }
   }
 
-  def all(limit: Int = 0, offset: Int = 0): Future[(Seq[Course], Int)] = {
-    courseRepository.all(limit, offset)
+  def allFreeAndPublished(limit: Int = 0, offset: Int = 0): Future[(Seq[Course], Int)] = {
+    courseRepository.allFreeAndPublished(limit, offset)
   }
 
   def isAbleToEdit(userId: UUID, courseId: UUID): Future[Boolean] = {
@@ -110,5 +114,28 @@ class CourseServiceImpl(courseRepository: CourseRepository,
 
   override def addUserToCourse(userId: UUID, courseId: UUID): Future[Int] = {
     courseRepository.addToMapping(userId, courseId)
+  }
+
+  override def removeUserFromCourse(userId: UUID, courseId: UUID): Future[Int] = {
+    courseRepository.removeFromMapping(userId, courseId)
+  }
+
+  override def grantCourseAccessToUser(userId: UUID, courseId: UUID): Future[Int] = {
+    courseRepository.setValuesInMapping(userId, courseId, ableToEdit = true)
+  }
+
+  override def publishCourse(courseId: UUID): Future[Int] = {
+    for {
+      newCourse <- courseRepository.getById(courseId) if newCourse.nonEmpty
+      result <- courseRepository.update(newCourse.get.copy(isPublished = true))
+    } yield result
+  }
+
+
+  override def hideCourse(courseId: UUID): Future[Int] = {
+    for {
+      newCourse <- courseRepository.getById(courseId) if newCourse.nonEmpty
+      result <- courseRepository.update(newCourse.get.copy(isPublished = false))
+    } yield result
   }
 }

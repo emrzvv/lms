@@ -111,13 +111,14 @@
 
      // Функция для поиска пользователей
     async function searchUsers() {
+        const courseId = "@course.id"
         const query = document.getElementById('searchUser').value;
         const resultsContainer = document.getElementById('searchResults');
         resultsContainer.innerHTML = ''; // Очистить предыдущие результаты
 
         try {
             // Выполнить запрос к серверу для фильтрации пользователей
-            const response = await fetch(`/user/filter?query=${encodeURIComponent(query)}`);
+            const response = await fetch(`/user/filter?query=${encodeURIComponent(query)}&courseId=${courseId}`);
             if (!response.ok) {
                 throw new Error('Ошибка при выполнении запроса');
             }
@@ -174,10 +175,6 @@
     function onKick(userId) {
             const courseId = "@course.id";
 
-            const formData = {
-                id: userId,
-            };
-
             fetch(`/course/${courseId}/users?id=${userId}`, {
                 method: 'DELETE',
             })
@@ -186,6 +183,25 @@
                     alert('Пользователь удалён!');
                 } else {
                     alert('Ошибка при удалении пользователя.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating course.');
+            });
+        }
+
+    function onGrantAccess(userId) {
+            const courseId = "@course.id";
+
+            fetch(`/course/${courseId}/users/grant_access?id=${userId}`, {
+                method: 'PUT',
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Пользователю даны права на редактирование курса!');
+                } else {
+                    alert('Ошибка при выдаче прав');
                 }
             })
             .catch(error => {
