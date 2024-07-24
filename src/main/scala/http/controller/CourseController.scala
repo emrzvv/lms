@@ -8,10 +8,10 @@ import component.{ActorSystemComponent, Repositories, Services}
 import db.model.{Course, User}
 import http.HttpBaseController
 import http.auth.JwtSecurity
-import http.model.UpdateCourseRequest
+import http.model._
 import utils.Serializers
 import views.html.components.{footer, head, header}
-import views.html.course.{course_preview, course_users, courses_all, newcourse}
+import views.html.course.{course_preview, course_users, courses_all, newcourse, course_content}
 
 import java.time.LocalDateTime
 import java.util.UUID
@@ -53,7 +53,7 @@ trait CourseController {
           }
         )
       } ~
-        path("allFreeAndPublished") {
+        path("all") {
           get {
             parameters("limit".as[Int].optional, "offset".as[Int].optional) { (limit, offset) =>
               authenticatedWithRole("user") { user =>
@@ -190,7 +190,66 @@ trait CourseController {
               }
             }
           }
-        }
+        } ~
+        path(JavaUUID / "edit" / "content") { courseId =>
+          get {
+            authenticatedWithRole("tutor") { tutor =>
+              onSuccess {
+                for {
+                  ableToEdit <- courseService.isAbleToEdit(tutor.id, courseId) if ableToEdit
+                  courseOpt <- courseService.getById(courseId) if courseOpt.nonEmpty
+                  result <- courseService.getModulesWithLessons(courseId)
+                } yield (courseOpt.get, result.sortBy(_.order))
+              } {
+                case (course, modulesWithLessons) =>
+                  complete(course_content(tutor, course, modulesWithLessons))
+              }
+            }
+          }
+        } ~
+        path(JavaUUID / "edit" / "module") { courseId =>
+          post {
+            authenticatedWithRole("tutor") { tutor =>
+              entity(as[UpdateModuleRequest]) { body =>
+                onSuccess(courseService.addModule(body.name, body.description, courseId)) { _ =>
+                  complete(StatusCodes.OK)
+                }
+              }
+              }
+            }
+          } //~ put {
+//            authenticatedWithRole("tutor") { tutor =>
+//              entity(as[UpdateModuleRequest]) { body =>
+//                ???
+//              }
+//            }
+//          } ~ delete {
+//            authenticatedWithRole("tutor") { tutor =>
+//              ???
+//            }
+//          }
+//        } ~
+//        path(JavaUUID / "module" / JavaUUID / "lesson") { (courseId, moduleId) =>
+//          post {
+//            authenticatedWithRole("tutor") { tutor =>
+//              entity(as[CreateLessonRequest]) { body =>
+//                ???
+//              }
+//            }
+//          } ~
+//            put {
+//              authenticatedWithRole("tutor") { tutor =>
+//                entity(as[UpdateLessonRequest]) { body =>
+//                  ???
+//                }
+//              }
+//            } ~
+//            delete {
+//              authenticatedWithRole("tutor") { tutor =>
+//                ???
+//              }
+//            }
+//        }
     }
   )
 }

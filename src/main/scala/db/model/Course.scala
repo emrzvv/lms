@@ -6,6 +6,7 @@ import slick.jdbc.{GetResult, PositionedResult}
 import slick.lifted.ProvenShape
 import slick.jdbc.JdbcBackend.Database
 
+import java.sql.Timestamp
 import java.time.{Instant, LocalDateTime, ZoneId}
 import java.util.{TimeZone, UUID}
 import scala.concurrent.{ExecutionContext, Future}
@@ -33,6 +34,9 @@ trait CourseRepository {
   def addToMapping(userId: UUID, courseId: UUID): Future[Int]
   def removeFromMapping(userId: UUID, courseId: UUID): Future[Int]
   def setValuesInMapping(userId: UUID, courseId: UUID, ableToEdit: Boolean): Future[Int]
+  def getModulesWithLessonsShort(courseId: UUID): Future[Seq[ModuleLessonOptShort]]
+  def addModule(module: Module): Future[Int]
+  def getModulesOrdered(): Future[Seq[Module]]
 }
 
 object CourseRepositoryImpl {
@@ -146,6 +150,47 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
         set able_to_edit = $ableToEdit
         where uc.user_id = ${userId.toString}::uuid and uc.course_id = ${courseId.toString}::uuid
       """
+    db.run(query)
+  }
+
+  override def getModulesWithLessonsShort(courseId: UUID): Future[Seq[ModuleLessonOptShort]] = {
+//    val getModulesAction =
+//      sql"""
+//           select m.id, m.name, m.description, m.order from modules as m
+//           where m.course_id = ${courseId.toString}::uuid
+//         """.as[ModuleShort]
+
+    val getModulesLessonsShortAction =
+      sql"""
+           select m.id, m.name, m.description, m.order, l.id, l.name, l.order from modules as m
+           left join lessons as l
+           on l.module_id = m.id
+           where m.course_id = ${courseId.toString}::uuid
+         """ .as[ModuleLessonOptShort]
+
+    db.run(getModulesLessonsShortAction)
+  }
+
+  override def addModule(module: Module): Future[Int] = {
+    val query =
+      sqlu"""
+            insert into modules (id, name, course_id, description, "order", created_at) values
+              (${module.id.toString}::uuid,
+                ${module.name},
+                ${module.courseId.toString}::uuid,
+                ${module.description.getOrElse("")},
+                ${module.order},
+                ${Timestamp.valueOf(module.createdAt)})
+          """
+    db.run(query)
+  }
+
+  override def getModulesOrdered(): Future[Seq[Module]] = {
+    val query =
+      sql"""
+           select m.id, m.name, m.course_id, m.description, m."order", m.created_at from modules as m order by m.order asc
+         """.as[Module]
+
     db.run(query)
   }
 }

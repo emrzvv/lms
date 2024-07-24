@@ -1,0 +1,213 @@
+@import db.model.{User, Course, ModuleWithLessonsShort}
+@(currentUser: User, course: Course, modulesWithLessons: Seq[ModuleWithLessonsShort])
+
+<!DOCTYPE html>
+<html lang="en">
+@views.html.components.head()
+<style>
+    .course-preview-image {
+        max-width: 100%;
+        max-height: 300px;
+        object-fit: cover;
+    }
+    .container-with-sidebar {
+        display: flex;
+    }
+    .sidebar {
+        width: 280px;
+        padding: 1rem;
+        color: white;
+        min-height: 100vh; /* Ensure sidebar stretches full height */
+        box-sizing: border-box;
+    }
+    .main-content {
+        flex-grow: 1;
+        padding: 1rem;
+        margin-left: 0px;
+    }
+    .module-title {
+        cursor: pointer;
+    }
+    .module-actions, .lesson-actions {
+        float: right;
+    }
+    .action-button {
+        margin-left: 5px;
+    }
+    .move-button {
+        margin-left: 5px;
+    }
+</style>
+<body>
+@views.html.components.header(currentUser)
+<div class="container-with-sidebar">
+    @if(course.creatorId == currentUser.id) {
+    <!--    TODO: || currentUser is able to edit-->
+    @views.html.components.course_edit_sidebar(course)
+    }
+
+    <div class="main-content">
+        <div class="container mt-5">
+            <div class="row">
+                <div class="col-md-8 offset-md-2">
+                    <div class="card">
+                        <div class="card-body">
+                            <button class="btn btn-primary mb-3" data-toggle="modal" data-target="#addModuleModal">Add Module</button>
+
+                            <div id="modules-accordion">
+                                @for(module <- modulesWithLessons) {
+                                <div class="card mb-3">
+                                    <div class="card-header module-title" id="module-@module.id-heading" data-toggle="collapse" data-target="#module-@module.id" aria-expanded="true" aria-controls="module-@module.id">
+                                        <h5 class="mb-0 d-flex justify-content-between">
+                                            <span>@module.name</span>
+                                            <span class="module-actions">
+                                                <button class="btn btn-sm btn-secondary action-button" onclick="handleEditModule('@module.id')">Edit</button>
+                                                <button class="btn btn-sm btn-danger action-button" onclick="handleDeleteModule('@module.id')">Delete</button>
+                                                <button class="btn btn-sm btn-info move-button" onclick="handleMoveModuleUp('@module.id')">Up</button>
+                                                <button class="btn btn-sm btn-info move-button" onclick="handleMoveModuleDown('@module.id')">Down</button>
+                                            </span>
+                                        </h5>
+                                    </div>
+                                    <div id="module-@module.id" class="collapse" aria-labelledby="module-@module.id-heading" data-parent="#modules-accordion">
+                                        <div class="card-body">
+                                            <ul class="list-group mb-3">
+                                                @for(lesson <- module.lessons) {
+                                                <li class="list-group-item d-flex justify-content-between">
+                                                    <span>@lesson.name</span>
+                                                    <span class="lesson-actions">
+                                                        <button class="btn btn-sm btn-secondary action-button" onclick="handleEditLesson('@lesson.id')">Edit</button>
+                                                        <button class="btn btn-sm btn-danger action-button" onclick="handleDeleteLesson('@lesson.id')">Delete</button>
+                                                        <button class="btn btn-sm btn-info move-button" onclick="handleMoveLessonUp('@lesson.id')">Up</button>
+                                                        <button class="btn btn-sm btn-info move-button" onclick="handleMoveLessonDown('@lesson.id')">Down</button>
+                                                    </span>
+                                                </li>
+                                                }
+                                            </ul>
+                                            <button class="btn btn-primary btn-sm" onclick="handleAddLesson('@module.id')">Add Lesson</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Диалоговое окно для добавления модуля -->
+<div class="modal fade" id="addModuleModal" tabindex="-1" role="dialog" aria-labelledby="addModuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addModuleModalLabel">Add Module</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="addModuleForm">
+                    <div class="form-group">
+                        <label for="moduleName">Name</label>
+                        <input type="text" class="form-control" id="moduleName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="moduleDescription">Description (Optional)</label>
+                        <textarea class="form-control" id="moduleDescription"></textarea>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="handleAddModule()">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!--@views.html.components.footer()-->
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+@views.html.components.js()
+<script>
+    function handleAddModule() {
+        const moduleName = document.getElementById('moduleName').value;
+        const moduleDescription = document.getElementById('moduleDescription').value;
+
+        if (!moduleName) {
+            alert('Please enter a module name.');
+            return;
+        }
+
+        const courseId = '@course.id';
+
+        fetch(`/course/${courseId}/edit/module`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: moduleName,
+                description: moduleDescription,
+            }),
+        })
+        .then(response => {
+            if (response.ok) {
+                $('#addModuleModal').modal('hide');
+                alert('Module added successfully');
+            } else {
+                console.error('Error:', error);
+                alert('Failed to add module');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to add module');
+        });
+    }
+
+    function handleEditModule(moduleId) {
+        // Логика для редактирования модуля
+        alert('Edit Module button clicked for module ' + moduleId);
+    }
+
+    function handleDeleteModule(moduleId) {
+        // Логика для удаления модуля
+        alert('Delete Module button clicked for module ' + moduleId);
+    }
+
+    function handleMoveModuleUp(moduleId) {
+        // Логика для перемещения модуля вверх
+        alert('Move Module Up button clicked for module ' + moduleId);
+    }
+
+    function handleMoveModuleDown(moduleId) {
+        // Логика для перемещения модуля вниз
+        alert('Move Module Down button clicked for module ' + moduleId);
+    }
+
+    function handleAddLesson(moduleId) {
+        // Логика для добавления урока
+        alert('Add Lesson button clicked for module ' + moduleId);
+    }
+
+    function handleEditLesson(lessonId) {
+        // Логика для редактирования урока
+        alert('Edit Lesson button clicked for lesson ' + lessonId);
+    }
+
+    function handleDeleteLesson(lessonId) {
+        // Логика для удаления урока
+        alert('Delete Lesson button clicked for lesson ' + lessonId);
+    }
+
+    function handleMoveLessonUp(lessonId) {
+        // Логика для перемещения урока вверх
+        alert('Move Lesson Up button clicked for lesson ' + lessonId);
+    }
+
+    function handleMoveLessonDown(lessonId) {
+        // Логика для перемещения урока вниз
+        alert('Move Lesson Down button clicked for lesson ' + lessonId);
+    }
+</script>
+</body>
+</html>

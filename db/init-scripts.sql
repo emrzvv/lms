@@ -29,18 +29,23 @@ CREATE TABLE "categories" (
 
 CREATE TABLE "modules" (
   "id" uuid PRIMARY KEY,
-  "name" text,
+  "name" text NOT NULL,
+  "course_id" uuid NOT NULL,
   "description" text,
-  "created_at" timestamp NOT NULL DEFAULT now()
+  "order" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT now(),
+  CONSTRAINT "fk_course_id" FOREIGN KEY ("course_id") REFERENCES "courses"("id")
 );
 
 CREATE TABLE "lessons" (
   "id" uuid PRIMARY KEY,
   "name" text NOT NULL,
+  "module_id" uuid NOT NULL,
+  "order" integer NOT NULL,
   "content" json NOT NULL,
   "created_at" timestamp NOT NULL DEFAULT now(),
   "pass_points" integer NOT NULL DEFAULT 0,
-  CONSTRAINT "fk_lesson_module_id" FOREIGN KEY ("id") REFERENCES "modules"("id")
+  CONSTRAINT "fk_module_id" FOREIGN KEY ("module_id") REFERENCES "modules"("id")
 );
 
 

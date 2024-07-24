@@ -1,7 +1,7 @@
 package service
 
 import akka.http.scaladsl.model.{StatusCode, StatusCodes}
-import db.model.{Course, CourseRepository, User, UsersCoursesMapping}
+import db.model.{Course, CourseRepository, Module, ModuleLessonOptShort, ModuleWithLessonsShort, User, UsersCoursesMapping}
 
 import java.time.LocalDateTime
 import java.util.UUID
@@ -31,6 +31,8 @@ trait CourseService {
   def grantCourseAccessToUser(userId: UUID, courseId: UUID): Future[Int]
   def publishCourse(courseId: UUID): Future[Int]
   def hideCourse(courseId: UUID): Future[Int]
+  def getModulesWithLessons(courseId: UUID): Future[Seq[ModuleWithLessonsShort]]
+  def addModule(name: String, description: Option[String], courseId: UUID): Future[Int]
 }
 
 object CourseServiceImpl {
@@ -136,6 +138,38 @@ class CourseServiceImpl(courseRepository: CourseRepository,
     for {
       newCourse <- courseRepository.getById(courseId) if newCourse.nonEmpty
       result <- courseRepository.update(newCourse.get.copy(isPublished = false))
+    } yield result
+  }
+
+  override def getModulesWithLessons(courseId: UUID): Future[Seq[ModuleWithLessonsShort]] = {
+    def groupLessonsByModule(modulesWithLessons: Seq[ModuleLessonOptShort]): Seq[ModuleWithLessonsShort] = {
+      val grouped = modulesWithLessons.groupBy(m => (m.id, m.name, m.description, m.order))
+
+      grouped.map { case ((id, name, description, order), lessons) =>
+        val lessonList = lessons.flatMap(_.lesson)
+        ModuleWithLessonsShort(id, name, description, order, lessonList)
+      }.toSeq
+    }
+
+    for {
+      moduleLessonSeq <- courseRepository.getModulesWithLessonsShort(courseId)
+      moduleLessonGrouped = groupLessonsByModule(moduleLessonSeq)
+    } yield moduleLessonGrouped
+  }
+
+  override def addModule(name: String, description: Option[String], courseId: UUID): Future[Int] = {
+    for {
+      modulesOrdered <- courseRepository.getModulesOrdered()
+      lastModuleOrder = modulesOrdered.lastOption.map(_.order).getOrElse(0)
+      newModule = Module(
+        id = UUID.randomUUID(),
+        name = name,
+        description = description,
+        order = lastModuleOrder + 1,
+        courseId = courseId,
+        createdAt = LocalDateTime.now()
+      )
+      result <- courseRepository.addModule(newModule)
     } yield result
   }
 }
