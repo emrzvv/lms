@@ -37,6 +37,9 @@ trait CourseRepository {
   def getModulesWithLessonsShort(courseId: UUID): Future[Seq[ModuleLessonOptShort]]
   def addModule(module: Module): Future[Int]
   def getModulesOrdered(): Future[Seq[Module]]
+  def getModuleById(id: UUID): Future[Option[Module]]
+  def deleteModule(id: UUID): Future[Int]
+  def updateModule(id: UUID, name: String, description: Option[String]): Future[Int]
 }
 
 object CourseRepositoryImpl {
@@ -191,6 +194,33 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
            select m.id, m.name, m.course_id, m.description, m."order", m.created_at from modules as m order by m.order asc
          """.as[Module]
 
+    db.run(query)
+  }
+
+  override def getModuleById(id: UUID): Future[Option[Module]] = {
+    val query =
+      sql"""
+           select * from modules as m where m.id = ${id.toString}::uuid
+         """.as[Module].headOption
+
+    db.run(query)
+  }
+
+  override def deleteModule(id: UUID): Future[Int] = {
+    val query =
+      sqlu"""
+            delete from modules as m where m.id = ${id.toString}::uuid
+          """
+    db.run(query)
+  }
+
+  override def updateModule(id: UUID, name: String, description: Option[String]): Future[Int] = {
+    val query =
+      sqlu"""
+            update modules as m
+            set name = ${name}, description = ${description.getOrElse("")}
+            where m.id = ${id.toString}::uuid
+          """
     db.run(query)
   }
 }

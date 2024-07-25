@@ -17,7 +17,7 @@
         width: 280px;
         padding: 1rem;
         color: white;
-        min-height: 100vh; /* Ensure sidebar stretches full height */
+        min-height: 100vh;
         box-sizing: border-box;
     }
     .main-content {
@@ -52,7 +52,7 @@
                 <div class="col-md-8 offset-md-2">
                     <div class="card">
                         <div class="card-body">
-                            <button class="btn btn-primary mb-3" data-toggle="modal" data-target="#addModuleModal">Add Module</button>
+                            <button class="btn btn-primary mb-3" onclick="openModuleModal(event, 'Создать модуль')">Создать модуль</button>
 
                             <div id="modules-accordion">
                                 @for(module <- modulesWithLessons) {
@@ -61,10 +61,10 @@
                                         <h5 class="mb-0 d-flex justify-content-between">
                                             <span>@module.name</span>
                                             <span class="module-actions">
-                                                <button class="btn btn-sm btn-secondary action-button" onclick="handleEditModule('@module.id')">Edit</button>
-                                                <button class="btn btn-sm btn-danger action-button" onclick="handleDeleteModule('@module.id')">Delete</button>
-                                                <button class="btn btn-sm btn-info move-button" onclick="handleMoveModuleUp('@module.id')">Up</button>
-                                                <button class="btn btn-sm btn-info move-button" onclick="handleMoveModuleDown('@module.id')">Down</button>
+                                                <button class="btn btn-sm btn-secondary action-button" onclick="openModuleModal(event, 'Редактировать модуль', '@module.id', '@module.name', '@module.description')"><i class="bi bi-pencil-square"></i></button>
+                                                <button class="btn btn-sm btn-danger action-button" onclick="handleDeleteModule(event, '@module.id')"><i class="bi bi-trash3"></i></button>
+                                                <button class="btn btn-sm btn-light move-button" onclick="handleMoveModuleUp(event, '@module.id')"><i class="bi bi-caret-up-fill"></i></button>
+                                                <button class="btn btn-sm btn-light move-button" onclick="handleMoveModuleDown(event, '@module.id')"><i class="bi bi-caret-down-fill"></i></button>
                                             </span>
                                         </h5>
                                     </div>
@@ -75,15 +75,15 @@
                                                 <li class="list-group-item d-flex justify-content-between">
                                                     <span>@lesson.name</span>
                                                     <span class="lesson-actions">
-                                                        <button class="btn btn-sm btn-secondary action-button" onclick="handleEditLesson('@lesson.id')">Edit</button>
-                                                        <button class="btn btn-sm btn-danger action-button" onclick="handleDeleteLesson('@lesson.id')">Delete</button>
-                                                        <button class="btn btn-sm btn-info move-button" onclick="handleMoveLessonUp('@lesson.id')">Up</button>
-                                                        <button class="btn btn-sm btn-info move-button" onclick="handleMoveLessonDown('@lesson.id')">Down</button>
+                                                        <button class="btn btn-sm btn-secondary action-button" onclick="handleEditLesson(event, '@lesson.id')">Edit</button>
+                                                        <button class="btn btn-sm btn-danger action-button" onclick="handleDeleteLesson(event, '@lesson.id')">Delete</button>
+                                                        <button class="btn btn-sm btn-info move-button" onclick="handleMoveLessonUp(event, '@lesson.id')">Up</button>
+                                                        <button class="btn btn-sm btn-info move-button" onclick="handleMoveLessonDown(event, '@lesson.id')">Down</button>
                                                     </span>
                                                 </li>
                                                 }
                                             </ul>
-                                            <button class="btn btn-primary btn-sm" onclick="handleAddLesson('@module.id')">Add Lesson</button>
+                                            <button class="btn btn-primary btn-sm" onclick="handleAddLesson(event, '@module.id')">Add Lesson</button>
                                         </div>
                                     </div>
                                 </div>
@@ -96,26 +96,27 @@
         </div>
     </div>
 </div>
-<!-- Диалоговое окно для добавления модуля -->
-<div class="modal fade" id="addModuleModal" tabindex="-1" role="dialog" aria-labelledby="addModuleModalLabel" aria-hidden="true">
+<!-- Диалоговое окно для добавления и редактирования модуля -->
+<div class="modal fade" id="moduleModal" tabindex="-1" role="dialog" aria-labelledby="moduleModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addModuleModalLabel">Add Module</h5>
+                <h5 class="modal-title" id="moduleModalLabel"></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
                 </button>
             </div>
             <div class="modal-body">
-                <form id="addModuleForm">
+                <form id="moduleForm">
                     <div class="form-group">
                         <label for="moduleName">Name</label>
                         <input type="text" class="form-control" id="moduleName" required>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group mt-3">
                         <label for="moduleDescription">Description (Optional)</label>
                         <textarea class="form-control" id="moduleDescription"></textarea>
                     </div>
-                    <button type="button" class="btn btn-primary" onclick="handleAddModule()">Submit</button>
+                    <input type="hidden" id="moduleId">
+                    <button type="button" class="btn btn-primary mt-3" onclick="handleSaveModule()">Submit</button>
                 </form>
             </div>
         </div>
@@ -128,7 +129,17 @@
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 @views.html.components.js()
 <script>
-    function handleAddModule() {
+    function openModuleModal(event, title = '', moduleId = '', moduleName = '', moduleDescription = '') {
+        event.stopPropagation();
+        document.getElementById('moduleModalLabel').textContent = title;
+        document.getElementById('moduleId').value = moduleId;
+        document.getElementById('moduleName').value = moduleName;
+        document.getElementById('moduleDescription').value = moduleDescription;
+        $('#moduleModal').modal('show');
+    }
+
+    function handleSaveModule() {
+        const moduleId = document.getElementById('moduleId').value;
         const moduleName = document.getElementById('moduleName').value;
         const moduleDescription = document.getElementById('moduleDescription').value;
 
@@ -138,73 +149,107 @@
         }
 
         const courseId = '@course.id';
+        const url = `/course/${courseId}/edit/module`;
+        const method = moduleId ? 'PUT' : 'POST';
 
-        fetch(`/course/${courseId}/edit/module`, {
-            method: 'POST',
+        const body = {
+            name: moduleName,
+            description: moduleDescription,
+        };
+
+        if (moduleId) {
+            body.id = moduleId;
+        }
+
+        fetch(url, {
+            method: method,
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                name: moduleName,
-                description: moduleDescription,
-            }),
+            body: JSON.stringify(body),
         })
         .then(response => {
             if (response.ok) {
-                $('#addModuleModal').modal('hide');
-                alert('Module added successfully');
+                $('#moduleModal').modal('hide');
+                alert('Module saved successfully');
+                location.reload(); // Reload the page to reflect changes
             } else {
-                console.error('Error:', error);
-                alert('Failed to add module');
+                console.error('Error:', response.statusText);
+                alert('Failed to save module');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to add module');
+            alert('Failed to save module');
         });
     }
 
-    function handleEditModule(moduleId) {
-        // Логика для редактирования модуля
-        alert('Edit Module button clicked for module ' + moduleId);
+    function handleDeleteModule(event, moduleId) {
+        event.stopPropagation();
+        const courseId = '@course.id';
+
+        fetch(`/course/${courseId}/edit/module`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                id: moduleId
+            }),
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Module deleted successfully');
+                location.reload(); // Reload the page to reflect changes
+            } else {
+                console.error('Error:', error);
+                alert('Failed to delete module');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error when deleting module');
+        });
     }
 
-    function handleDeleteModule(moduleId) {
-        // Логика для удаления модуля
-        alert('Delete Module button clicked for module ' + moduleId);
-    }
-
-    function handleMoveModuleUp(moduleId) {
+    function handleMoveModuleUp(event, moduleId) {
+        event.stopPropagation();
         // Логика для перемещения модуля вверх
         alert('Move Module Up button clicked for module ' + moduleId);
     }
 
-    function handleMoveModuleDown(moduleId) {
+    function handleMoveModuleDown(event, moduleId) {
+        event.stopPropagation();
         // Логика для перемещения модуля вниз
         alert('Move Module Down button clicked for module ' + moduleId);
     }
 
-    function handleAddLesson(moduleId) {
+    function handleAddLesson(event, moduleId) {
+        event.stopPropagation();
         // Логика для добавления урока
         alert('Add Lesson button clicked for module ' + moduleId);
     }
 
-    function handleEditLesson(lessonId) {
+    function handleEditLesson(event, lessonId) {
+        event.stopPropagation();
         // Логика для редактирования урока
         alert('Edit Lesson button clicked for lesson ' + lessonId);
     }
 
-    function handleDeleteLesson(lessonId) {
+    function handleDeleteLesson(event, lessonId) {
+        event.stopPropagation();
         // Логика для удаления урока
         alert('Delete Lesson button clicked for lesson ' + lessonId);
     }
 
-    function handleMoveLessonUp(lessonId) {
+    function handleMoveLessonUp(event, lessonId) {
+        event.stopPropagation();
         // Логика для перемещения урока вверх
         alert('Move Lesson Up button clicked for lesson ' + lessonId);
     }
 
-    function handleMoveLessonDown(lessonId) {
+    function handleMoveLessonDown(event, lessonId) {
+        event.stopPropagation();
         // Логика для перемещения урока вниз
         alert('Move Lesson Down button clicked for lesson ' + lessonId);
     }

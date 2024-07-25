@@ -1,5 +1,7 @@
 package http.model
 
+import java.util.UUID
+
 case class UpdateCourseRequest(name: String,
                                 shortDescription: String,
                                 description: String,
@@ -7,8 +9,14 @@ case class UpdateCourseRequest(name: String,
                                 estimatedTime: Int,
                                 isFree: Boolean)
 
-case class UpdateModuleRequest(name: String,
+case class CreateModuleRequest(name: String,
                                description: Option[String])
+
+case class UpdateModuleRequest(id: UUID,
+                               name: String,
+                               description: Option[String])
+
+case class DeleteModuleRequest(id: UUID)
 
 case class CreateLessonRequest(name: String)
 

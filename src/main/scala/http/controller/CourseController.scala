@@ -210,25 +210,30 @@ trait CourseController {
         path(JavaUUID / "edit" / "module") { courseId =>
           post {
             authenticatedWithRole("tutor") { tutor =>
-              entity(as[UpdateModuleRequest]) { body =>
+              entity(as[CreateModuleRequest]) { body =>
                 onSuccess(courseService.addModule(body.name, body.description, courseId)) { _ =>
                   complete(StatusCodes.OK)
                 }
               }
+            }
+          } ~ put {
+            authenticatedWithRole("tutor") { tutor =>
+              entity(as[UpdateModuleRequest]) { body =>
+                onSuccess(courseService.updateModule(body.id, body.name, body.description)) { _ =>
+                  complete(StatusCodes.OK)
+                }
               }
             }
-          } //~ put {
-//            authenticatedWithRole("tutor") { tutor =>
-//              entity(as[UpdateModuleRequest]) { body =>
-//                ???
-//              }
-//            }
-//          } ~ delete {
-//            authenticatedWithRole("tutor") { tutor =>
-//              ???
-//            }
-//          }
-//        } ~
+          } ~ delete {
+            authenticatedWithRole("tutor") { tutor =>
+              entity(as[DeleteModuleRequest]) { body =>
+                onSuccess(courseService.deleteModule(body.id)) { _ =>
+                  complete(StatusCodes.OK)
+                }
+              }
+            }
+          }
+        } //~
 //        path(JavaUUID / "module" / JavaUUID / "lesson") { (courseId, moduleId) =>
 //          post {
 //            authenticatedWithRole("tutor") { tutor =>

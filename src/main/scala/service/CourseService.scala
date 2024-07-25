@@ -33,6 +33,9 @@ trait CourseService {
   def hideCourse(courseId: UUID): Future[Int]
   def getModulesWithLessons(courseId: UUID): Future[Seq[ModuleWithLessonsShort]]
   def addModule(name: String, description: Option[String], courseId: UUID): Future[Int]
+  def getModuleById(id: UUID): Future[Option[Module]]
+  def deleteModule(id: UUID): Future[Int]
+  def updateModule(id: UUID, name: String, description: Option[String]): Future[Int]
 }
 
 object CourseServiceImpl {
@@ -171,5 +174,20 @@ class CourseServiceImpl(courseRepository: CourseRepository,
       )
       result <- courseRepository.addModule(newModule)
     } yield result
+  }
+
+  override def getModuleById(id: UUID): Future[Option[Module]] = {
+    courseRepository.getModuleById(id)
+  }
+
+  override def deleteModule(id: UUID): Future[Int] = {
+    for {
+      module <- getModuleById(id) if module.nonEmpty
+      result <- courseRepository.deleteModule(id)
+    } yield result
+  }
+
+  override def updateModule(id: UUID, name: String, description: Option[String]): Future[Int] = {
+    courseRepository.updateModule(id, name, description)
   }
 }
