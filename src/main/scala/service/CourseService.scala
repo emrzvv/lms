@@ -36,6 +36,7 @@ trait CourseService {
   def getModuleById(id: UUID): Future[Option[Module]]
   def deleteModule(id: UUID): Future[Int]
   def updateModule(id: UUID, name: String, description: Option[String]): Future[Int]
+  def moveModule(courseId: UUID, moduleId: UUID, direction: String): Future[Int]
 }
 
 object CourseServiceImpl {
@@ -162,7 +163,7 @@ class CourseServiceImpl(courseRepository: CourseRepository,
 
   override def addModule(name: String, description: Option[String], courseId: UUID): Future[Int] = {
     for {
-      modulesOrdered <- courseRepository.getModulesOrdered()
+      modulesOrdered <- courseRepository.getModulesOrdered(courseId)
       lastModuleOrder = modulesOrdered.lastOption.map(_.order).getOrElse(0)
       newModule = Module(
         id = UUID.randomUUID(),
@@ -189,5 +190,21 @@ class CourseServiceImpl(courseRepository: CourseRepository,
 
   override def updateModule(id: UUID, name: String, description: Option[String]): Future[Int] = {
     courseRepository.updateModule(id, name, description)
+  }
+
+
+  override def moveModule(courseId: UUID, moduleId: UUID, direction: String): Future[Int] = {
+    for {
+      module <- getModuleById(moduleId) if module.nonEmpty
+      moduleToSwapOpt <-
+        if (direction == "up") courseRepository.getUpperModuleByOrder(module.get)
+        else if (direction == "down") courseRepository.getLowerModuleByOrder(module.get)
+        else Future(None)
+      result <-
+        moduleToSwapOpt match {
+          case Some(moduleToSwap) => courseRepository.swapModuleOrders(module.get, moduleToSwap)
+          case None => Future.successful(0)
+        }
+    } yield result
   }
 }

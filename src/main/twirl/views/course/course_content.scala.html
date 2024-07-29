@@ -30,13 +30,26 @@
     }
     .module-actions, .lesson-actions {
         float: right;
+        display: flex;
+        align-items: center;
     }
     .action-button {
         margin-left: 5px;
     }
-    .move-button {
-        margin-left: 5px;
+    .action-buttons {
+        display: flex;
+        align-items: center;
     }
+    .move-buttons {
+        display: flex;
+        flex-direction: column;
+        margin-left: 10px; /* Расстояние между группами кнопок */
+    }
+    .move-buttons .move-button {
+        margin-top: 2px;
+        margin-bottom: 2px;
+    }
+
 </style>
 <body>
 @views.html.components.header(currentUser)
@@ -53,32 +66,39 @@
                     <div class="card">
                         <div class="card-body">
                             <button class="btn btn-primary mb-3" onclick="openModuleModal(event, 'Создать модуль')">Создать модуль</button>
-
                             <div id="modules-accordion">
-                                @for(module <- modulesWithLessons) {
+                                @for((module, moduleIndex) <- modulesWithLessons.zipWithIndex) {
                                 <div class="card mb-3">
                                     <div class="card-header module-title" id="module-@module.id-heading" data-toggle="collapse" data-target="#module-@module.id" aria-expanded="true" aria-controls="module-@module.id">
                                         <h5 class="mb-0 d-flex justify-content-between">
                                             <span>@module.name</span>
-                                            <span class="module-actions">
-                                                <button class="btn btn-sm btn-secondary action-button" onclick="openModuleModal(event, 'Редактировать модуль', '@module.id', '@module.name', '@module.description')"><i class="bi bi-pencil-square"></i></button>
-                                                <button class="btn btn-sm btn-danger action-button" onclick="handleDeleteModule(event, '@module.id')"><i class="bi bi-trash3"></i></button>
-                                                <button class="btn btn-sm btn-light move-button" onclick="handleMoveModuleUp(event, '@module.id')"><i class="bi bi-caret-up-fill"></i></button>
-                                                <button class="btn btn-sm btn-light move-button" onclick="handleMoveModuleDown(event, '@module.id')"><i class="bi bi-caret-down-fill"></i></button>
+                                            <span class="module-actions d-flex">
+                                                <div class="action-buttons">
+                                                    <button class="btn btn-sm btn-secondary action-button" onclick="openModuleModal(event, 'Редактировать модуль', '@module.id', '@module.name', '@module.description')"><i class="bi bi-pencil-square"></i></button>
+                                                    <button class="btn btn-sm btn-danger action-button" onclick="handleDeleteModule(event, '@module.id')"><i class="bi bi-trash3"></i></button>
+                                                </div>
+                                                <div class="move-buttons">
+                                                    <button class="btn btn-sm btn-light move-button" onclick="handleMoveModuleUp(event, '@module.id')" @if(moduleIndex == 0) { disabled }><i class="bi bi-caret-up-fill"></i></button>
+                                                    <button class="btn btn-sm btn-light move-button" onclick="handleMoveModuleDown(event, '@module.id')" @if(moduleIndex == modulesWithLessons.size - 1) { disabled }><i class="bi bi-caret-down-fill"></i></button>
+                                                </div>
                                             </span>
                                         </h5>
                                     </div>
                                     <div id="module-@module.id" class="collapse" aria-labelledby="module-@module.id-heading" data-parent="#modules-accordion">
                                         <div class="card-body">
                                             <ul class="list-group mb-3">
-                                                @for(lesson <- module.lessons) {
+                                                @for((lesson, lessonIndex) <- module.lessons.zipWithIndex) {
                                                 <li class="list-group-item d-flex justify-content-between">
                                                     <span>@lesson.name</span>
-                                                    <span class="lesson-actions">
-                                                        <button class="btn btn-sm btn-secondary action-button" onclick="handleEditLesson(event, '@lesson.id')">Edit</button>
-                                                        <button class="btn btn-sm btn-danger action-button" onclick="handleDeleteLesson(event, '@lesson.id')">Delete</button>
-                                                        <button class="btn btn-sm btn-info move-button" onclick="handleMoveLessonUp(event, '@lesson.id')">Up</button>
-                                                        <button class="btn btn-sm btn-info move-button" onclick="handleMoveLessonDown(event, '@lesson.id')">Down</button>
+                                                    <span class="lesson-actions d-flex">
+                                                        <div class="action-buttons">
+                                                            <button class="btn btn-sm btn-secondary action-button" onclick="handleEditLesson(event, '@lesson.id')">Edit</button>
+                                                            <button class="btn btn-sm btn-danger action-button" onclick="handleDeleteLesson(event, '@lesson.id')">Delete</button>
+                                                        </div>
+                                                        <div class="move-buttons">
+                                                            <button class="btn btn-sm btn-info move-button" onclick="handleMoveLessonUp(event, '@lesson.id')" @if(lessonIndex == 0) { disabled }>Up</button>
+                                                            <button class="btn btn-sm btn-info move-button" onclick="handleMoveLessonDown(event, '@lesson.id')" @if(lessonIndex == module.lessons.size - 1) { disabled }>Down</button>
+                                                        </div>
                                                     </span>
                                                 </li>
                                                 }
@@ -88,6 +108,8 @@
                                     </div>
                                 </div>
                                 }
+
+
                             </div>
                         </div>
                     </div>
@@ -214,14 +236,60 @@
 
     function handleMoveModuleUp(event, moduleId) {
         event.stopPropagation();
-        // Логика для перемещения модуля вверх
-        alert('Move Module Up button clicked for module ' + moduleId);
+        const courseId = '@course.id';
+
+        fetch(`/course/${courseId}/edit/module/move`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                id: moduleId,
+                direction: 'up'
+            }),
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Module moved successfully');
+                location.reload(); // Reload the page to reflect changes
+            } else {
+                console.error('Error:', error);
+                alert('Failed to move module');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error when moving module');
+        });
     }
 
     function handleMoveModuleDown(event, moduleId) {
         event.stopPropagation();
-        // Логика для перемещения модуля вниз
-        alert('Move Module Down button clicked for module ' + moduleId);
+        const courseId = '@course.id';
+
+        fetch(`/course/${courseId}/edit/module/move`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                id: moduleId,
+                direction: 'down'
+            }),
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Module moved successfully');
+                location.reload(); // Reload the page to reflect changes
+            } else {
+                console.error('Error:', error);
+                alert('Failed to move module');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error when moving module');
+        });
     }
 
     function handleAddLesson(event, moduleId) {

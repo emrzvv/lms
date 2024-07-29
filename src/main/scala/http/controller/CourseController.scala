@@ -233,7 +233,18 @@ trait CourseController {
               }
             }
           }
-        } //~
+        } ~
+        path(JavaUUID / "edit" / "module" / "move") { courseId =>
+          put {
+            authenticatedWithRole("tutor") { tutor =>
+              entity(as[MoveModuleRequest]) { body =>
+                onSuccess(courseService.moveModule(courseId, body.id, body.direction)) { _ =>
+                  complete(StatusCodes.OK)
+                }
+              }
+            }
+          }
+        }
 //        path(JavaUUID / "module" / JavaUUID / "lesson") { (courseId, moduleId) =>
 //          post {
 //            authenticatedWithRole("tutor") { tutor =>

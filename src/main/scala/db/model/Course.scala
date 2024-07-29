@@ -36,10 +36,14 @@ trait CourseRepository {
   def setValuesInMapping(userId: UUID, courseId: UUID, ableToEdit: Boolean): Future[Int]
   def getModulesWithLessonsShort(courseId: UUID): Future[Seq[ModuleLessonOptShort]]
   def addModule(module: Module): Future[Int]
-  def getModulesOrdered(): Future[Seq[Module]]
+  def getModulesOrdered(courseId: UUID): Future[Seq[Module]]
   def getModuleById(id: UUID): Future[Option[Module]]
   def deleteModule(id: UUID): Future[Int]
   def updateModule(id: UUID, name: String, description: Option[String]): Future[Int]
+  def updateModule(module: Module): Future[Int]
+  def getLowerModuleByOrder(module: Module): Future[Option[Module]]
+  def getUpperModuleByOrder(module: Module): Future[Option[Module]]
+  def swapModuleOrders(left: Module, right: Module): Future[Int]
 }
 
 object CourseRepositoryImpl {
@@ -188,10 +192,11 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
     db.run(query)
   }
 
-  override def getModulesOrdered(): Future[Seq[Module]] = {
+  override def getModulesOrdered(courseId: UUID): Future[Seq[Module]] = {
     val query =
       sql"""
-           select m.id, m.name, m.course_id, m.description, m."order", m.created_at from modules as m order by m.order asc
+           select m.id, m.name, m.course_id, m.description, m."order", m.created_at from modules as m
+           where m.course_id = ${courseId.toString}::uuid order by m.order asc
          """.as[Module]
 
     db.run(query)
@@ -209,7 +214,7 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
   override def deleteModule(id: UUID): Future[Int] = {
     val query =
       sqlu"""
-            delete from modules as m where m.id = ${id.toString}::uuid
+            delete from modules where id = ${id.toString}::uuid
           """
     db.run(query)
   }
@@ -217,10 +222,66 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
   override def updateModule(id: UUID, name: String, description: Option[String]): Future[Int] = {
     val query =
       sqlu"""
-            update modules as m
+            update modules
             set name = ${name}, description = ${description.getOrElse("")}
-            where m.id = ${id.toString}::uuid
+            where id = ${id.toString}::uuid
           """
     db.run(query)
+  }
+
+  override def updateModule(module: Module): Future[Int] = {
+    val query =
+      sqlu"""
+            update modules
+            set name = ${module.name},
+                description = ${module.description.getOrElse("")},
+                "order" = ${module.order}
+            where id = ${module.id.toString}::uuid
+          """
+
+    db.run(query)
+  }
+
+  override def getLowerModuleByOrder(module: Module): Future[Option[Module]] = {
+    val targetOrder = module.order + 1
+    val query =
+      sql"""
+           select * from modules
+           where course_id = ${module.courseId.toString}::uuid
+           and "order" = ${targetOrder}
+         """.as[Module].headOption
+    db.run(query)
+  }
+
+  override def getUpperModuleByOrder(module: Module): Future[Option[Module]] = {
+    val targetOrder = module.order -1
+    val query =
+      sql"""
+           select * from modules
+           where course_id = ${module.courseId.toString}::uuid
+           and "order" = ${targetOrder}
+         """.as[Module].headOption
+    db.run(query)
+  }
+
+
+  override def swapModuleOrders(left: Module, right: Module): Future[Int] = {
+    val leftQuery =
+      sqlu"""
+        update modules
+        set "order" = ${right.order}
+        where id = ${left.id.toString}::uuid
+          """
+    val rightQuery =
+      sqlu"""
+        update modules
+        set "order" = ${left.order}
+        where id = ${right.id.toString}::uuid
+          """
+    val query = for {
+      _ <- leftQuery
+      _ <- rightQuery
+    } yield 2
+    db.run(query.transactionally)
   }
 }
