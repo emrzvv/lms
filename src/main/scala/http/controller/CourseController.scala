@@ -8,10 +8,10 @@ import component.{ActorSystemComponent, Repositories, Services}
 import db.model.{Course, User}
 import http.HttpBaseController
 import http.auth.JwtSecurity
-import http.model.UpdateCourseRequest
+import http.model._
 import utils.Serializers
 import views.html.components.{footer, head, header}
-import views.html.course.{course_preview, course_users, courses_all, newcourse}
+import views.html.course.{course_preview, course_users, courses_all, newcourse, course_content}
 
 import java.time.LocalDateTime
 import java.util.UUID
@@ -53,7 +53,7 @@ trait CourseController {
           }
         )
       } ~
-        path("allFreeAndPublished") {
+        path("all") {
           get {
             parameters("limit".as[Int].optional, "offset".as[Int].optional) { (limit, offset) =>
               authenticatedWithRole("user") { user =>
@@ -187,6 +187,100 @@ trait CourseController {
             authenticatedWithRole("admin") { admin =>
               onSuccess(courseService.hideCourse(courseId)) { _ =>
                 complete(StatusCodes.OK)
+              }
+            }
+          }
+        } ~
+        path(JavaUUID / "edit" / "content") { courseId =>
+          get {
+            authenticatedWithRole("tutor") { tutor =>
+              onSuccess {
+                for {
+                  ableToEdit <- courseService.isAbleToEdit(tutor.id, courseId) if ableToEdit
+                  courseOpt <- courseService.getById(courseId) if courseOpt.nonEmpty
+                  result <- courseService.getModulesWithLessons(courseId)
+                } yield (courseOpt.get, result.sortBy(_.order).map(mls => mls.copy(lessons = mls.lessons.sortBy(_.order))))
+              } {
+                case (course, modulesWithLessons) =>
+                  complete(course_content(tutor, course, modulesWithLessons))
+              }
+            }
+          }
+        } ~
+        path(JavaUUID / "edit" / "module") { courseId =>
+          post {
+            authenticatedWithRole("tutor") { tutor =>
+              entity(as[CreateModuleRequest]) { body =>
+                onSuccess(courseService.addModule(body.name, body.description, courseId)) { _ =>
+                  complete(StatusCodes.OK)
+                }
+              }
+            }
+          } ~ put {
+            authenticatedWithRole("tutor") { tutor =>
+              entity(as[UpdateModuleRequest]) { body =>
+                onSuccess(courseService.updateModule(body.id, body.name, body.description)) { _ =>
+                  complete(StatusCodes.OK)
+                }
+              }
+            }
+          } ~ delete {
+            authenticatedWithRole("tutor") { tutor =>
+              entity(as[DeleteModuleRequest]) { body =>
+                onSuccess(courseService.deleteModule(body.id)) { _ =>
+                  complete(StatusCodes.OK)
+                }
+              }
+            }
+          }
+        } ~
+        path(JavaUUID / "edit" / "module" / "move") { courseId =>
+          put {
+            authenticatedWithRole("tutor") { tutor =>
+              entity(as[MoveModuleRequest]) { body =>
+                onSuccess(courseService.moveModule(courseId, body.id, body.direction)) { _ =>
+                  complete(StatusCodes.OK)
+                }
+              }
+            }
+          }
+        } ~
+        path(JavaUUID / "edit" / "lesson") { courseId =>
+          post {
+            authenticatedWithRole("tutor") { tutor =>
+              entity(as[CreateLessonRequest]) { body =>
+                onSuccess(courseService.addLesson(body.moduleId, body.name)) { _ =>
+                  complete(StatusCodes.OK)
+                }
+              }
+            }
+          } ~
+            put {
+              authenticatedWithRole("tutor") { tutor =>
+                entity(as[UpdateLessonRequest]) { body =>
+                  onSuccess(courseService.updateLesson(body.id, body.name)) { _ =>
+                    complete(StatusCodes.OK)
+                  }
+                }
+              }
+            } ~
+            delete {
+              authenticatedWithRole("tutor") { tutor =>
+                entity(as[DeleteLessonRequest]) { body =>
+                  onSuccess(courseService.deleteLesson(body.id)) { _ =>
+                    complete(StatusCodes.OK)
+                  }
+                }
+              }
+            }
+        } ~
+        path(JavaUUID / "edit" / "lesson" / "move") { courseId =>
+          put {
+            authenticatedWithRole("tutor") { tutor =>
+              entity(as[MoveLessonRequest]) { body =>
+                onSuccess(courseService.moveLesson(body.id, body.moduleId, body.direction)) { _ =>
+                  complete(StatusCodes.OK)
+                }
               }
             }
           }

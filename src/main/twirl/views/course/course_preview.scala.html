@@ -31,6 +31,7 @@
 @views.html.components.header(currentUser)
 <div class="container-with-sidebar">
     @if(course.creatorId == currentUser.id) {
+<!--    TODO: || currentUser is able to edit-->
     @views.html.components.course_edit_sidebar(course)
     }
 
@@ -45,6 +46,7 @@
                             <p class="card-text">@course.description</p>
                             <p class="card-text"><small class="text-muted">Время прохождения: @course.estimatedTime ч.</small></p>
                             @if(course.creatorId != currentUser.id) {
+<!--                            // TODO: || currentUser ! is able to edit-->
                             <button class="btn btn-success">Поступить на курс</button>
                             }
                             @if(currentUser.roles.contains("admin")) {
@@ -55,6 +57,7 @@
                                 }
                             }
                             @if(course.creatorId == currentUser.id) {
+<!--                            // TODO: || currentUser is able to edit-->
                             <form id="courseForm">
                                 <div class="form-group mt-3">
                                     <label for="name">Название курса:</label>

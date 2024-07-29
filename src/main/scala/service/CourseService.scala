@@ -1,7 +1,8 @@
 package service
 
 import akka.http.scaladsl.model.{StatusCode, StatusCodes}
-import db.model.{Course, CourseRepository, User, UsersCoursesMapping}
+import db.model.{Course, CourseRepository, Lesson, Module, ModuleLessonOptShort, ModuleWithLessonsShort, User, UsersCoursesMapping}
+import org.json4s.{JObject, JValue}
 
 import java.time.LocalDateTime
 import java.util.UUID
@@ -31,6 +32,16 @@ trait CourseService {
   def grantCourseAccessToUser(userId: UUID, courseId: UUID): Future[Int]
   def publishCourse(courseId: UUID): Future[Int]
   def hideCourse(courseId: UUID): Future[Int]
+  def getModulesWithLessons(courseId: UUID): Future[Seq[ModuleWithLessonsShort]]
+  def addModule(name: String, description: Option[String], courseId: UUID): Future[Int]
+  def getModuleById(id: UUID): Future[Option[Module]]
+  def deleteModule(id: UUID): Future[Int]
+  def updateModule(id: UUID, name: String, description: Option[String]): Future[Int]
+  def moveModule(courseId: UUID, moduleId: UUID, direction: String): Future[Int]
+  def addLesson(moduleId: UUID, name: String): Future[Int]
+  def updateLesson(lessonId: UUID, name: String): Future[Int]
+  def deleteLesson(lessonId: UUID): Future[Int]
+  def moveLesson(lessonId: UUID, moduleId: UUID, direction: String): Future[Int]
 }
 
 object CourseServiceImpl {
@@ -136,6 +147,110 @@ class CourseServiceImpl(courseRepository: CourseRepository,
     for {
       newCourse <- courseRepository.getById(courseId) if newCourse.nonEmpty
       result <- courseRepository.update(newCourse.get.copy(isPublished = false))
+    } yield result
+  }
+
+  override def getModulesWithLessons(courseId: UUID): Future[Seq[ModuleWithLessonsShort]] = {
+    def groupLessonsByModule(modulesWithLessons: Seq[ModuleLessonOptShort]): Seq[ModuleWithLessonsShort] = {
+      val grouped = modulesWithLessons.groupBy(m => (m.id, m.name, m.description, m.order))
+
+      grouped.map { case ((id, name, description, order), lessons) =>
+        val lessonList = lessons.flatMap(_.lesson)
+        ModuleWithLessonsShort(id, name, description, order, lessonList)
+      }.toSeq
+    }
+
+    for {
+      moduleLessonSeq <- courseRepository.getModulesWithLessonsShort(courseId)
+      moduleLessonGrouped = groupLessonsByModule(moduleLessonSeq)
+    } yield moduleLessonGrouped
+  }
+
+  override def addModule(name: String, description: Option[String], courseId: UUID): Future[Int] = {
+    for {
+      modulesOrdered <- courseRepository.getModulesOrdered(courseId)
+      lastModuleOrder = modulesOrdered.lastOption.map(_.order).getOrElse(0)
+      newModule = Module(
+        id = UUID.randomUUID(),
+        name = name,
+        description = description,
+        order = lastModuleOrder + 1,
+        courseId = courseId,
+        createdAt = LocalDateTime.now()
+      )
+      result <- courseRepository.addModule(newModule)
+    } yield result
+  }
+
+  override def getModuleById(id: UUID): Future[Option[Module]] = {
+    courseRepository.getModuleById(id)
+  }
+
+  override def deleteModule(id: UUID): Future[Int] = {
+    for {
+      module <- getModuleById(id) if module.nonEmpty
+      result <- courseRepository.deleteModule(id)
+    } yield result
+  }
+
+  override def updateModule(id: UUID, name: String, description: Option[String]): Future[Int] = {
+    courseRepository.updateModule(id, name, description)
+  }
+
+
+  override def moveModule(courseId: UUID, moduleId: UUID, direction: String): Future[Int] = {
+    for {
+      module <- getModuleById(moduleId) if module.nonEmpty
+      moduleToSwapOpt <-
+        if (direction == "up") courseRepository.getUpperModuleByOrder(module.get)
+        else if (direction == "down") courseRepository.getLowerModuleByOrder(module.get)
+        else Future(None)
+      result <-
+        moduleToSwapOpt match {
+          case Some(moduleToSwap) => courseRepository.swapModuleOrders(module.get, moduleToSwap)
+          case None => Future.successful(0)
+        }
+    } yield result
+  }
+
+  override def addLesson(moduleId: UUID, name: String): Future[Int] = {
+    for {
+      lessons <- courseRepository.getLessonsShortByModuleOrdered(moduleId)
+      lastLessonOrder = lessons.lastOption.map(_.order).getOrElse(0) + 1
+      lesson = Lesson(
+        id = UUID.randomUUID(),
+        name = name,
+        moduleId = moduleId,
+        order = lastLessonOrder,
+        content = JObject(),
+        createdAt = LocalDateTime.now(),
+        passPoints = 0
+      )
+      result <- courseRepository.addLesson(lesson)
+    } yield result
+  }
+
+  override def updateLesson(lessonId: UUID, name: String): Future[Int] = {
+    courseRepository.updateLesson(lessonId, name)
+  }
+
+  override def deleteLesson(lessonId: UUID): Future[Int] = {
+    courseRepository.deleteLesson(lessonId)
+  }
+
+  override def moveLesson(lessonId: UUID, moduleId: UUID, direction: String): Future[Int] = {
+    for {
+      lessonShort <- courseRepository.getLessonShortById(lessonId) if lessonShort.nonEmpty
+      lessonToSwapOpt <-
+        if (direction == "up") courseRepository.getUpperLessonShortByOrder(lessonShort.get, moduleId)
+        else if (direction == "down") courseRepository.getLowerLessonShortByOrder(lessonShort.get, moduleId)
+        else Future(None)
+
+      result <-
+        lessonToSwapOpt match {
+          case Some(lessonToSwap) => courseRepository.swapLessonOrders(lessonShort.get, lessonToSwap)
+          case None => Future.successful(0)
+        }
     } yield result
   }
 }

@@ -27,6 +27,7 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.5.6",
   "org.json4s" %% "json4s-native" % json4sVersion,
   "org.json4s" %% "json4s-jackson" % json4sVersion,
+  "com.github.tminglei" %% "slick-pg_json4s" % "0.22.2",
   "de.heikoseeberger" %% "akka-http-json4s" % "1.39.2",
   "org.webjars.npm" % "bootstrap" % "5.3.3",
   "org.webjars.npm" % "bootstrap-icons" % "1.11.3",

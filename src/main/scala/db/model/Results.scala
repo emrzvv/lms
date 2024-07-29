@@ -42,4 +42,55 @@ object Results {
       r.nextTimestamp().toLocalDateTime.toLocalDate
     )
   )
+
+  implicit val getModuleShortResult: GetResult[ModuleShort] = GetResult(r =>
+    ModuleShort(
+      r.nextObject().asInstanceOf[UUID],
+      r.nextString(),
+      r.nextString(),
+      r.nextInt()
+    )
+  )
+
+  implicit val getLessonShort: GetResult[LessonShort] = GetResult(r =>
+    LessonShort(
+      r.nextObject().asInstanceOf[UUID],
+      r.nextString(),
+      r.nextInt()
+    )
+  )
+
+  implicit val getModuleLessonOptShort: GetResult[ModuleLessonOptShort] = GetResult { r =>
+    val id = r.nextObject().asInstanceOf[UUID]
+    val name = r.nextString()
+    val description = r.nextStringOption()
+    val order = r.nextInt()
+
+    val lessonFieldsExist = !r.rs.isAfterLast
+    val lesson = if (lessonFieldsExist) {
+      val lessonId = r.nextObjectOption().map(_.asInstanceOf[UUID])
+      val lessonName = r.nextStringOption()
+      val lessonOrder = r.nextIntOption()
+
+      (lessonId, lessonName, lessonOrder) match {
+        case (Some(id), Some(name), Some(order)) => Some(LessonShort(id, name, order))
+        case _ => None
+      }
+    } else {
+      None
+    }
+
+    ModuleLessonOptShort(id, name, description, order, lesson)
+  }
+
+  implicit val getModule: GetResult[Module] = GetResult(r =>
+    Module(
+      r.nextObject().asInstanceOf[UUID],
+      r.nextString(),
+      r.nextObject().asInstanceOf[UUID],
+      r.nextStringOption(),
+      r.nextInt(),
+      r.nextTimestamp().toLocalDateTime
+    )
+  )
 }
