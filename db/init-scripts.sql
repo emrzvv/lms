@@ -42,7 +42,7 @@ CREATE TABLE "lessons" (
   "name" text NOT NULL,
   "module_id" uuid NOT NULL,
   "order" integer NOT NULL,
-  "content" json NOT NULL,
+  "content" jsonb NOT NULL,
   "created_at" timestamp NOT NULL DEFAULT now(),
   "pass_points" integer NOT NULL DEFAULT 0,
   CONSTRAINT "fk_module_id" FOREIGN KEY ("module_id") REFERENCES "modules"("id")
