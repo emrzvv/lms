@@ -95,12 +95,12 @@
                                                     <span>@lesson.name</span>
                                                     <span class="lesson-actions d-flex">
                                                         <div class="action-buttons">
-                                                            <button class="btn btn-sm btn-secondary action-button" onclick="openLessonModal(event, 'Редактировать урок', '@lesson.id', '@lesson.name', '@module.id')">Edit</button>
-                                                            <button class="btn btn-sm btn-danger action-button" onclick="handleDeleteLesson(event, '@lesson.id')">Delete</button>
+                                                            <button class="btn btn-sm btn-secondary action-button" onclick="openLessonModal(event, 'Редактировать урок', '@lesson.id', '@lesson.name', '@module.id')"><i class="bi bi-pencil-square"></i></button>
+                                                            <button class="btn btn-sm btn-danger action-button" onclick="handleDeleteLesson(event, '@lesson.id')"><i class="bi bi-trash3"></i></button>
                                                         </div>
                                                         <div class="move-buttons">
-                                                            <button class="btn btn-sm btn-info move-button" onclick="handleMoveLessonUp(event, '@lesson.id')" @if(lessonIndex == 0) { disabled }>Up</button>
-                                                            <button class="btn btn-sm btn-info move-button" onclick="handleMoveLessonDown(event, '@lesson.id')" @if(lessonIndex == module.lessons.size - 1) { disabled }>Down</button>
+                                                            <button class="btn btn-sm btn-light move-button" onclick="handleMoveLessonUp(event, '@lesson.id', '@module.id')" @if(lessonIndex == 0) { disabled }><i class="bi bi-caret-up-fill"></i></button>
+                                                            <button class="btn btn-sm btn-light move-button" onclick="handleMoveLessonDown(event, '@lesson.id', '@module.id')" @if(lessonIndex == module.lessons.size - 1) { disabled }><i class="bi bi-caret-down-fill"></i></button>
                                                         </div>
                                                     </span>
                                                 </li>
@@ -179,6 +179,29 @@
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 @views.html.components.js()
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        restoreAccordionState();
+    });
+
+    function saveAccordionState() {
+        const expandedModules = [];
+        document.querySelectorAll('#modules-accordion .collapse.show').forEach(el => {
+            const moduleId = el.id;
+            expandedModules.push(moduleId);
+        });
+        localStorage.setItem('expandedModules', JSON.stringify(expandedModules));
+    }
+
+    function restoreAccordionState() {
+        const expandedModules = JSON.parse(localStorage.getItem('expandedModules')) || [];
+        expandedModules.forEach(moduleId => {
+            const element = document.getElementById(moduleId);
+            if (element) {
+                $(element).collapse('show');
+            }
+        });
+    }
+
     function openModuleModal(event, title = '', moduleId = '', moduleName = '', moduleDescription = '') {
         event.stopPropagation();
         document.getElementById('moduleModalLabel').textContent = title;
@@ -198,6 +221,7 @@
     }
 
     function handleSaveModule() {
+        saveAccordionState();
         const moduleId = document.getElementById('moduleId').value;
         const moduleName = document.getElementById('moduleName').value;
         const moduleDescription = document.getElementById('moduleDescription').value;
@@ -244,6 +268,7 @@
     }
 
     function handleSaveLesson() {
+        saveAccordionState();
         const lessonId = document.getElementById('lessonId').value;
         const lessonName = document.getElementById('lessonName').value;
         const moduleId = document.getElementById('lessonModuleId').value;
@@ -290,6 +315,7 @@
     }
 
     function handleDeleteModule(event, moduleId) {
+        saveAccordionState();
         event.stopPropagation();
         const courseId = '@course.id';
 
@@ -318,6 +344,7 @@
     }
 
     function handleMoveModuleUp(event, moduleId) {
+        saveAccordionState();
         event.stopPropagation();
         const courseId = '@course.id';
 
@@ -347,6 +374,7 @@
     }
 
     function handleMoveModuleDown(event, moduleId) {
+        saveAccordionState();
         event.stopPropagation();
         const courseId = '@course.id';
 
@@ -376,6 +404,7 @@
     }
 
     function handleDeleteLesson(event, lessonId) {
+        saveAccordionState();
         event.stopPropagation();
         const courseId = '@course.id';
 
@@ -403,7 +432,8 @@
         });
     }
 
-    function handleMoveLessonUp(event, lessonId) {
+    function handleMoveLessonUp(event, lessonId, moduleId) {
+        saveAccordionState();
         event.stopPropagation();
         const courseId = '@course.id';
 
@@ -414,6 +444,7 @@
             },
             body: JSON.stringify({
                 id: lessonId,
+                moduleId: moduleId,
                 direction: 'up'
             }),
         })
@@ -432,7 +463,8 @@
         });
     }
 
-    function handleMoveLessonDown(event, lessonId) {
+    function handleMoveLessonDown(event, lessonId, moduleId) {
+        saveAccordionState();
         event.stopPropagation();
         const courseId = '@course.id';
 
@@ -443,6 +475,7 @@
             },
             body: JSON.stringify({
                 id: lessonId,
+                moduleId: moduleId,
                 direction: 'down'
             }),
         })

@@ -50,6 +50,10 @@ trait CourseRepository {
   def addLesson(lesson: Lesson): Future[Int]
   def updateLesson(id: UUID, name: String): Future[Int]
   def deleteLesson(id: UUID): Future[Int]
+  def getLessonShortById(id: UUID): Future[Option[LessonShort]]
+  def getLowerLessonShortByOrder(lessonShort: LessonShort, moduleId: UUID): Future[Option[LessonShort]]
+  def getUpperLessonShortByOrder(lessonShort: LessonShort, moduleId: UUID): Future[Option[LessonShort]]
+  def swapLessonOrders(left: LessonShort, right: LessonShort): Future[Int]
 }
 
 object CourseRepositoryImpl {
@@ -339,5 +343,60 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
           """
 
     db.run(query)
+  }
+
+  override def getLessonShortById(id: UUID): Future[Option[LessonShort]] = {
+    val query =
+      sql"""
+           select id, name, "order"
+           from lessons
+           where id = ${id.toString}::uuid
+         """.as[LessonShort].headOption
+
+    db.run(query)
+  }
+
+  override def getLowerLessonShortByOrder(lessonShort: LessonShort, moduleId: UUID): Future[Option[LessonShort]] = {
+    val targetOrder = lessonShort.order + 1
+    val query =
+      sql"""
+           select id, name, "order"
+           from lessons
+           where module_id = ${moduleId.toString}::uuid and "order" = ${targetOrder}
+         """.as[LessonShort].headOption
+
+    db.run(query)
+  }
+
+  override def getUpperLessonShortByOrder(lessonShort: LessonShort, moduleId: UUID): Future[Option[LessonShort]] = {
+    val targetOrder = lessonShort.order - 1
+    val query =
+      sql"""
+           select id, name, "order"
+           from lessons
+           where module_id = ${moduleId.toString}::uuid and "order" = ${targetOrder}
+         """.as[LessonShort].headOption
+
+    db.run(query)
+  }
+
+  override def swapLessonOrders(left: LessonShort, right: LessonShort): Future[Int] = {
+    val leftQuery =
+      sqlu"""
+        update lessons
+        set "order" = ${right.order}
+        where id = ${left.id.toString}::uuid
+          """
+    val rightQuery =
+      sqlu"""
+        update lessons
+        set "order" = ${left.order}
+        where id = ${right.id.toString}::uuid
+          """
+    val query = for {
+      _ <- leftQuery
+      _ <- rightQuery
+    } yield 2
+    db.run(query.transactionally)
   }
 }

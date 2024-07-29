@@ -199,7 +199,7 @@ trait CourseController {
                   ableToEdit <- courseService.isAbleToEdit(tutor.id, courseId) if ableToEdit
                   courseOpt <- courseService.getById(courseId) if courseOpt.nonEmpty
                   result <- courseService.getModulesWithLessons(courseId)
-                } yield (courseOpt.get, result.sortBy(_.order))
+                } yield (courseOpt.get, result.sortBy(_.order).map(mls => mls.copy(lessons = mls.lessons.sortBy(_.order))))
               } {
                 case (course, modulesWithLessons) =>
                   complete(course_content(tutor, course, modulesWithLessons))
@@ -273,6 +273,17 @@ trait CourseController {
                 }
               }
             }
+        } ~
+        path(JavaUUID / "edit" / "lesson" / "move") { courseId =>
+          put {
+            authenticatedWithRole("tutor") { tutor =>
+              entity(as[MoveLessonRequest]) { body =>
+                onSuccess(courseService.moveLesson(body.id, body.moduleId, body.direction)) { _ =>
+                  complete(StatusCodes.OK)
+                }
+              }
+            }
+          }
         }
     }
   )

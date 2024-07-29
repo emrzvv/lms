@@ -41,6 +41,7 @@ trait CourseService {
   def addLesson(moduleId: UUID, name: String): Future[Int]
   def updateLesson(lessonId: UUID, name: String): Future[Int]
   def deleteLesson(lessonId: UUID): Future[Int]
+  def moveLesson(lessonId: UUID, moduleId: UUID, direction: String): Future[Int]
 }
 
 object CourseServiceImpl {
@@ -215,7 +216,7 @@ class CourseServiceImpl(courseRepository: CourseRepository,
   override def addLesson(moduleId: UUID, name: String): Future[Int] = {
     for {
       lessons <- courseRepository.getLessonsShortByModuleOrdered(moduleId)
-      lastLessonOrder = lessons.lastOption.map(_.order).getOrElse(0)
+      lastLessonOrder = lessons.lastOption.map(_.order).getOrElse(0) + 1
       lesson = Lesson(
         id = UUID.randomUUID(),
         name = name,
@@ -235,5 +236,21 @@ class CourseServiceImpl(courseRepository: CourseRepository,
 
   override def deleteLesson(lessonId: UUID): Future[Int] = {
     courseRepository.deleteLesson(lessonId)
+  }
+
+  override def moveLesson(lessonId: UUID, moduleId: UUID, direction: String): Future[Int] = {
+    for {
+      lessonShort <- courseRepository.getLessonShortById(lessonId) if lessonShort.nonEmpty
+      lessonToSwapOpt <-
+        if (direction == "up") courseRepository.getUpperLessonShortByOrder(lessonShort.get, moduleId)
+        else if (direction == "down") courseRepository.getLowerLessonShortByOrder(lessonShort.get, moduleId)
+        else Future(None)
+
+      result <-
+        lessonToSwapOpt match {
+          case Some(lessonToSwap) => courseRepository.swapLessonOrders(lessonShort.get, lessonToSwap)
+          case None => Future.successful(0)
+        }
+    } yield result
   }
 }
