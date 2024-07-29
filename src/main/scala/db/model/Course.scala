@@ -5,6 +5,8 @@ import db.Tables
 import slick.jdbc.{GetResult, PositionedResult}
 import slick.lifted.ProvenShape
 import slick.jdbc.JdbcBackend.Database
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
 
 import java.sql.Timestamp
 import java.time.{Instant, LocalDateTime, ZoneId}
@@ -44,6 +46,10 @@ trait CourseRepository {
   def getLowerModuleByOrder(module: Module): Future[Option[Module]]
   def getUpperModuleByOrder(module: Module): Future[Option[Module]]
   def swapModuleOrders(left: Module, right: Module): Future[Int]
+  def getLessonsShortByModuleOrdered(moduleId: UUID): Future[Seq[LessonShort]]
+  def addLesson(lesson: Lesson): Future[Int]
+  def updateLesson(id: UUID, name: String): Future[Int]
+  def deleteLesson(id: UUID): Future[Int]
 }
 
 object CourseRepositoryImpl {
@@ -283,5 +289,55 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
       _ <- rightQuery
     } yield 2
     db.run(query.transactionally)
+  }
+
+  override def getLessonsShortByModuleOrdered(moduleId: UUID): Future[Seq[LessonShort]] = {
+    val query =
+      sql"""
+            select l.id, l.name, l."order" from lessons as l
+            where l.module_id = ${moduleId.toString}::uuid
+            order by l."order" asc
+          """.as[LessonShort]
+
+    db.run(query)
+  }
+
+  override def addLesson(lesson: Lesson): Future[Int] = {
+    val query =
+      sqlu"""
+            insert into lessons (id, name, module_id, "order", content, created_at, pass_points) values
+              (
+              ${lesson.id.toString}::uuid,
+              ${lesson.name},
+              ${lesson.moduleId.toString}::uuid,
+              ${lesson.order},
+              ${lesson.content},
+              ${Timestamp.valueOf(lesson.createdAt)},
+              ${lesson.passPoints}
+              )
+          """
+
+    db.run(query)
+  }
+
+  override def updateLesson(id: UUID, name: String): Future[Int] = {
+    val query =
+      sqlu"""
+            update lessons
+            set name = ${name}
+            where id = ${id.toString}::uuid
+          """
+
+    db.run(query)
+  }
+
+  override def deleteLesson(id: UUID): Future[Int] = {
+    val query =
+      sqlu"""
+            delete from lessons
+            where id = ${id.toString}::uuid
+          """
+
+    db.run(query)
   }
 }

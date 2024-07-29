@@ -1,7 +1,8 @@
 package service
 
 import akka.http.scaladsl.model.{StatusCode, StatusCodes}
-import db.model.{Course, CourseRepository, Module, ModuleLessonOptShort, ModuleWithLessonsShort, User, UsersCoursesMapping}
+import db.model.{Course, CourseRepository, Lesson, Module, ModuleLessonOptShort, ModuleWithLessonsShort, User, UsersCoursesMapping}
+import org.json4s.{JObject, JValue}
 
 import java.time.LocalDateTime
 import java.util.UUID
@@ -37,6 +38,9 @@ trait CourseService {
   def deleteModule(id: UUID): Future[Int]
   def updateModule(id: UUID, name: String, description: Option[String]): Future[Int]
   def moveModule(courseId: UUID, moduleId: UUID, direction: String): Future[Int]
+  def addLesson(moduleId: UUID, name: String): Future[Int]
+  def updateLesson(lessonId: UUID, name: String): Future[Int]
+  def deleteLesson(lessonId: UUID): Future[Int]
 }
 
 object CourseServiceImpl {
@@ -206,5 +210,30 @@ class CourseServiceImpl(courseRepository: CourseRepository,
           case None => Future.successful(0)
         }
     } yield result
+  }
+
+  override def addLesson(moduleId: UUID, name: String): Future[Int] = {
+    for {
+      lessons <- courseRepository.getLessonsShortByModuleOrdered(moduleId)
+      lastLessonOrder = lessons.lastOption.map(_.order).getOrElse(0)
+      lesson = Lesson(
+        id = UUID.randomUUID(),
+        name = name,
+        moduleId = moduleId,
+        order = lastLessonOrder,
+        content = JObject(),
+        createdAt = LocalDateTime.now(),
+        passPoints = 0
+      )
+      result <- courseRepository.addLesson(lesson)
+    } yield result
+  }
+
+  override def updateLesson(lessonId: UUID, name: String): Future[Int] = {
+    courseRepository.updateLesson(lessonId, name)
+  }
+
+  override def deleteLesson(lessonId: UUID): Future[Int] = {
+    courseRepository.deleteLesson(lessonId)
   }
 }

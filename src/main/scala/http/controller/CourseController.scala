@@ -244,28 +244,36 @@ trait CourseController {
               }
             }
           }
+        } ~
+        path(JavaUUID / "edit" / "lesson") { courseId =>
+          post {
+            authenticatedWithRole("tutor") { tutor =>
+              entity(as[CreateLessonRequest]) { body =>
+                onSuccess(courseService.addLesson(body.moduleId, body.name)) { _ =>
+                  complete(StatusCodes.OK)
+                }
+              }
+            }
+          } ~
+            put {
+              authenticatedWithRole("tutor") { tutor =>
+                entity(as[UpdateLessonRequest]) { body =>
+                  onSuccess(courseService.updateLesson(body.id, body.name)) { _ =>
+                    complete(StatusCodes.OK)
+                  }
+                }
+              }
+            } ~
+            delete {
+              authenticatedWithRole("tutor") { tutor =>
+                entity(as[DeleteLessonRequest]) { body =>
+                  onSuccess(courseService.deleteLesson(body.id)) { _ =>
+                    complete(StatusCodes.OK)
+                  }
+                }
+              }
+            }
         }
-//        path(JavaUUID / "module" / JavaUUID / "lesson") { (courseId, moduleId) =>
-//          post {
-//            authenticatedWithRole("tutor") { tutor =>
-//              entity(as[CreateLessonRequest]) { body =>
-//                ???
-//              }
-//            }
-//          } ~
-//            put {
-//              authenticatedWithRole("tutor") { tutor =>
-//                entity(as[UpdateLessonRequest]) { body =>
-//                  ???
-//                }
-//              }
-//            } ~
-//            delete {
-//              authenticatedWithRole("tutor") { tutor =>
-//                ???
-//              }
-//            }
-//        }
     }
   )
 }

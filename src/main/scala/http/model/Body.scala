@@ -20,6 +20,8 @@ case class DeleteModuleRequest(id: UUID)
 
 case class MoveModuleRequest(id: UUID, direction: String)
 
-case class CreateLessonRequest(name: String)
+case class CreateLessonRequest(moduleId: UUID, name: String)
 
-case class UpdateLessonRequest(name: String)
+case class UpdateLessonRequest(id: UUID, moduleId: UUID, name: String)
+
+case class DeleteLessonRequest(id: UUID)

@@ -49,7 +49,10 @@
         margin-top: 2px;
         margin-bottom: 2px;
     }
-
+    .module-description {
+        font-size: 0.8rem;
+        margin-bottom: 10px;
+    }
 </style>
 <body>
 @views.html.components.header(currentUser)
@@ -92,7 +95,7 @@
                                                     <span>@lesson.name</span>
                                                     <span class="lesson-actions d-flex">
                                                         <div class="action-buttons">
-                                                            <button class="btn btn-sm btn-secondary action-button" onclick="handleEditLesson(event, '@lesson.id')">Edit</button>
+                                                            <button class="btn btn-sm btn-secondary action-button" onclick="openLessonModal(event, 'Редактировать урок', '@lesson.id', '@lesson.name', '@module.id')">Edit</button>
                                                             <button class="btn btn-sm btn-danger action-button" onclick="handleDeleteLesson(event, '@lesson.id')">Delete</button>
                                                         </div>
                                                         <div class="move-buttons">
@@ -103,7 +106,8 @@
                                                 </li>
                                                 }
                                             </ul>
-                                            <button class="btn btn-primary btn-sm" onclick="handleAddLesson(event, '@module.id')">Add Lesson</button>
+                                            <p class="module-description text-muted">@module.description</p>
+                                            <button class="btn btn-primary btn-sm" onclick="openLessonModal(event, 'Создать урок', '', '', '@module.id')">Add Lesson</button>
                                         </div>
                                     </div>
                                 </div>
@@ -130,15 +134,39 @@
             <div class="modal-body">
                 <form id="moduleForm">
                     <div class="form-group">
-                        <label for="moduleName">Name</label>
+                        <label for="moduleName">Название модуля</label>
                         <input type="text" class="form-control" id="moduleName" required>
                     </div>
                     <div class="form-group mt-3">
-                        <label for="moduleDescription">Description (Optional)</label>
+                        <label for="moduleDescription">Описание (опционально)</label>
                         <textarea class="form-control" id="moduleDescription"></textarea>
                     </div>
                     <input type="hidden" id="moduleId">
-                    <button type="button" class="btn btn-primary mt-3" onclick="handleSaveModule()">Submit</button>
+                    <button type="button" class="btn btn-primary mt-3" onclick="handleSaveModule()">Подтвердить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Диалоговое окно для добавления и редактирования урока -->
+<div class="modal fade" id="lessonModal" tabindex="-1" role="dialog" aria-labelledby="lessonModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="lessonModalLabel"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="lessonForm">
+                    <div class="form-group">
+                        <label for="lessonName">Название урока</label>
+                        <input type="text" class="form-control" id="lessonName" required>
+                    </div>
+                    <input type="hidden" id="lessonId">
+                    <input type="hidden" id="lessonModuleId">
+                    <button type="button" class="btn btn-primary mt-3" onclick="handleSaveLesson()">Подтвердить</button>
                 </form>
             </div>
         </div>
@@ -158,6 +186,15 @@
         document.getElementById('moduleName').value = moduleName;
         document.getElementById('moduleDescription').value = moduleDescription;
         $('#moduleModal').modal('show');
+    }
+
+    function openLessonModal(event, title = '', lessonId = '', lessonName = '', moduleId = '') {
+        event.stopPropagation();
+        document.getElementById('lessonModalLabel').textContent = title;
+        document.getElementById('lessonId').value = lessonId;
+        document.getElementById('lessonName').value = lessonName;
+        document.getElementById('lessonModuleId').value = moduleId;
+        $('#lessonModal').modal('show');
     }
 
     function handleSaveModule() {
@@ -203,6 +240,52 @@
         .catch(error => {
             console.error('Error:', error);
             alert('Failed to save module');
+        });
+    }
+
+    function handleSaveLesson() {
+        const lessonId = document.getElementById('lessonId').value;
+        const lessonName = document.getElementById('lessonName').value;
+        const moduleId = document.getElementById('lessonModuleId').value;
+
+        if (!lessonName) {
+            alert('Please enter a lesson name.');
+            return;
+        }
+
+        const courseId = '@course.id';
+        const url = `/course/${courseId}/edit/lesson`;
+        const method = lessonId ? 'PUT' : 'POST';
+
+        const body = {
+            name: lessonName,
+            moduleId: moduleId,
+        };
+
+        if (lessonId) {
+            body.id = lessonId;
+        }
+
+        fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+        })
+        .then(response => {
+            if (response.ok) {
+                $('#lessonModal').modal('hide');
+                alert('Lesson saved successfully');
+                location.reload(); // Reload the page to reflect changes
+            } else {
+                console.error('Error:', response.statusText);
+                alert('Failed to save lesson');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to save lesson');
         });
     }
 
@@ -292,34 +375,90 @@
         });
     }
 
-    function handleAddLesson(event, moduleId) {
-        event.stopPropagation();
-        // Логика для добавления урока
-        alert('Add Lesson button clicked for module ' + moduleId);
-    }
-
-    function handleEditLesson(event, lessonId) {
-        event.stopPropagation();
-        // Логика для редактирования урока
-        alert('Edit Lesson button clicked for lesson ' + lessonId);
-    }
-
     function handleDeleteLesson(event, lessonId) {
         event.stopPropagation();
-        // Логика для удаления урока
-        alert('Delete Lesson button clicked for lesson ' + lessonId);
+        const courseId = '@course.id';
+
+        fetch(`/course/${courseId}/edit/lesson`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                id: lessonId
+            }),
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Lesson deleted successfully');
+                location.reload(); // Reload the page to reflect changes
+            } else {
+                console.error('Error:', error);
+                alert('Failed to delete lesson');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error when deleting lesson');
+        });
     }
 
     function handleMoveLessonUp(event, lessonId) {
         event.stopPropagation();
-        // Логика для перемещения урока вверх
-        alert('Move Lesson Up button clicked for lesson ' + lessonId);
+        const courseId = '@course.id';
+
+        fetch(`/course/${courseId}/edit/lesson/move`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                id: lessonId,
+                direction: 'up'
+            }),
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Lesson moved successfully');
+                location.reload(); // Reload the page to reflect changes
+            } else {
+                console.error('Error:', error);
+                alert('Failed to move lesson');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error when moving lesson');
+        });
     }
 
     function handleMoveLessonDown(event, lessonId) {
         event.stopPropagation();
-        // Логика для перемещения урока вниз
-        alert('Move Lesson Down button clicked for lesson ' + lessonId);
+        const courseId = '@course.id';
+
+        fetch(`/course/${courseId}/edit/lesson/move`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                id: lessonId,
+                direction: 'down'
+            }),
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Lesson moved successfully');
+                location.reload(); // Reload the page to reflect changes
+            } else {
+                console.error('Error:', error);
+                alert('Failed to move lesson');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error when moving lesson');
+        });
     }
 </script>
 </body>
