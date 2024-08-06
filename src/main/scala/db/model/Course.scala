@@ -54,6 +54,8 @@ trait CourseRepository {
   def getLowerLessonShortByOrder(lessonShort: LessonShort, moduleId: UUID): Future[Option[LessonShort]]
   def getUpperLessonShortByOrder(lessonShort: LessonShort, moduleId: UUID): Future[Option[LessonShort]]
   def swapLessonOrders(left: LessonShort, right: LessonShort): Future[Int]
+  def getLessonById(id: UUID): Future[Option[Lesson]]
+  def updateLessonContent(id: UUID, content: JValue): Future[Int]
 }
 
 object CourseRepositoryImpl {
@@ -398,5 +400,25 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
       _ <- rightQuery
     } yield 2
     db.run(query.transactionally)
+  }
+
+  override def getLessonById(id: UUID): Future[Option[Lesson]] = {
+    val query =
+      sql"""
+           select * from lessons
+           where id = ${id.toString}::uuid
+         """.as[Lesson].headOption
+    db.run(query)
+  }
+
+  override def updateLessonContent(id: UUID, content: JValue): Future[Int] = {
+    val query =
+      sqlu"""
+            update lessons
+            set content = ${content}
+            where id = ${id.toString}::uuid
+          """
+
+    db.run(query)
   }
 }

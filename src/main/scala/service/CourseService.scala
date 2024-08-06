@@ -42,6 +42,8 @@ trait CourseService {
   def updateLesson(lessonId: UUID, name: String): Future[Int]
   def deleteLesson(lessonId: UUID): Future[Int]
   def moveLesson(lessonId: UUID, moduleId: UUID, direction: String): Future[Int]
+  def getLesson(lessonId: UUID): Future[Option[Lesson]]
+  def updateLessonContent(lessonId: UUID, content: JValue): Future[Int]
 }
 
 object CourseServiceImpl {
@@ -119,7 +121,7 @@ class CourseServiceImpl(courseRepository: CourseRepository,
     courseRepository.getUsersOnCourse(courseId)
   }
 
-  def getUsersOnCourseWithRights(courseId: UUID): Future[(Seq[(User, Boolean)])] = {
+  def getUsersOnCourseWithRights(courseId: UUID): Future[Seq[(User, Boolean)]] = {
     courseRepository.getUsersOnCourseWithRights(courseId)
   }
 
@@ -252,5 +254,13 @@ class CourseServiceImpl(courseRepository: CourseRepository,
           case None => Future.successful(0)
         }
     } yield result
+  }
+
+  override def getLesson(lessonId: UUID): Future[Option[Lesson]] = {
+    courseRepository.getLessonById(lessonId)
+  }
+
+  override def updateLessonContent(lessonId: UUID, content: JValue): Future[Int] = {
+    courseRepository.updateLessonContent(lessonId, content)
   }
 }

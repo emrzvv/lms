@@ -11,7 +11,10 @@ import http.auth.JwtSecurity
 import http.model._
 import utils.Serializers
 import views.html.components.{footer, head, header}
-import views.html.course.{course_preview, course_users, courses_all, newcourse, course_content}
+import views.html.course.{course_preview, course_users, courses_all, newcourse, course_content, course_lesson_edit}
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
+import org.json4s.jackson.Serialization.write
 
 import java.time.LocalDateTime
 import java.util.UUID
@@ -284,6 +287,37 @@ trait CourseController {
               }
             }
           }
+        } ~
+        path(JavaUUID / "edit" / "lesson" / JavaUUID) { (courseId, lessonId) =>
+          get {
+            authenticatedWithRole("tutor") { tutor =>
+              onSuccess {
+                for {
+                  ableToEdit <- courseService.isAbleToEdit(tutor.id, courseId) if ableToEdit
+                  courseOpt <- courseService.getById(courseId) if courseOpt.nonEmpty
+                  lessonOpt <- courseService.getLesson(lessonId) if lessonOpt.nonEmpty
+                } yield (courseOpt.get, lessonOpt.get)
+              } { case (course, lesson) =>
+                complete(course_lesson_edit(tutor, course, lesson, compact(render(lesson.content))))
+              }
+            }
+          } ~
+            put {
+              authenticatedWithRole("tutor") { tutor =>
+                entity(as[UpdateLessonContentRequest]) { body =>
+                  onSuccess {
+                    for {
+                      ableToEdit <- courseService.isAbleToEdit(tutor.id, courseId) if ableToEdit
+                      courseOpt <- courseService.getById(courseId) if courseOpt.nonEmpty
+                      lessonOpt <- courseService.getLesson(lessonId) if lessonOpt.nonEmpty
+                      result <- courseService.updateLessonContent(lessonId, body.content)
+                    } yield result
+                  } { _ =>
+                    complete(StatusCodes.OK)
+                  }
+                }
+              }
+            }
         }
     }
   )
