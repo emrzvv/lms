@@ -29,7 +29,7 @@ trait CourseService {
   def getUsersOnCourseWithRights(courseId: UUID): Future[Seq[(User, Boolean)]]
   def addUserToCourse(userId: UUID, courseId: UUID): Future[Int]
   def removeUserFromCourse(userId: UUID, courseId: UUID): Future[Int]
-  def grantCourseAccessToUser(userId: UUID, courseId: UUID): Future[Int]
+  def grantCourseAccessToUser(userId: UUID, courseId: UUID, ableToEdit: Boolean): Future[Int]
   def publishCourse(courseId: UUID): Future[Int]
   def hideCourse(courseId: UUID): Future[Int]
   def getModulesWithLessons(courseId: UUID): Future[Seq[ModuleWithLessonsShort]]
@@ -44,6 +44,10 @@ trait CourseService {
   def moveLesson(lessonId: UUID, moduleId: UUID, direction: String): Future[Int]
   def getLesson(lessonId: UUID): Future[Option[Lesson]]
   def updateLessonContent(lessonId: UUID, content: JValue): Future[Int]
+  def getCoursesByUser(userId: UUID): Future[Seq[Course]]
+  def getCreatedCoursesByUser(userId: UUID): Future[Seq[Course]]
+  def checkIfUserOnCourse(userId: UUID, courseId: UUID): Future[Boolean]
+  def getRelatedCoursesByUser(userId: UUID): Future[(Seq[Course], Seq[Course])]
 }
 
 object CourseServiceImpl {
@@ -133,8 +137,8 @@ class CourseServiceImpl(courseRepository: CourseRepository,
     courseRepository.removeFromMapping(userId, courseId)
   }
 
-  override def grantCourseAccessToUser(userId: UUID, courseId: UUID): Future[Int] = {
-    courseRepository.setValuesInMapping(userId, courseId, ableToEdit = true)
+  override def grantCourseAccessToUser(userId: UUID, courseId: UUID, ableToEdit: Boolean): Future[Int] = {
+    courseRepository.setValuesInMapping(userId, courseId, ableToEdit = ableToEdit)
   }
 
   override def publishCourse(courseId: UUID): Future[Int] = {
@@ -262,5 +266,27 @@ class CourseServiceImpl(courseRepository: CourseRepository,
 
   override def updateLessonContent(lessonId: UUID, content: JValue): Future[Int] = {
     courseRepository.updateLessonContent(lessonId, content)
+  }
+
+  override def getCoursesByUser(userId: UUID): Future[Seq[Course]] = {
+    courseRepository.getCoursesByUser(userId)
+  }
+
+  override def checkIfUserOnCourse(userId: UUID, courseId: UUID): Future[Boolean] = {
+    for {
+      courseUsers <- getUsersOnCourse(courseId)
+      result = courseUsers.exists(_.id == userId)
+    } yield result
+  }
+
+  override def getCreatedCoursesByUser(userId: UUID): Future[Seq[Course]] = {
+    courseRepository.getCreatedCoursesByUser(userId)
+  }
+
+  override def getRelatedCoursesByUser(userId: UUID): Future[(Seq[Course], Seq[Course])] = {
+    for {
+      enrolledCourses <- courseRepository.getCoursesByUser(userId)
+      createdCourses <- courseRepository.getCreatedCoursesByUser(userId)
+    } yield (enrolledCourses, createdCourses)
   }
 }

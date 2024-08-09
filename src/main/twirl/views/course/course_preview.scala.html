@@ -1,6 +1,7 @@
 @import db.model.User
 @import db.model.Course
-@(currentUser: User, course: Course)
+@import db.model.ModuleWithLessonsShort
+@(currentUser: User, course: Course, isUserOnCourse: Boolean, modulesWithLessons: Seq[ModuleWithLessonsShort])
 
 <!DOCTYPE html>
 <html lang="en">
@@ -26,6 +27,13 @@
         padding: 1rem;
         margin-left: 0px;
     }
+    .module-description {
+        font-size: 0.8rem;
+        margin-bottom: 10px;
+    }
+    .module-title {
+        cursor: pointer;
+    }
 </style>
 <body>
 @views.html.components.header(currentUser)
@@ -45,9 +53,41 @@
                             <h3 class="card-title">@course.name</h3>
                             <p class="card-text">@course.description</p>
                             <p class="card-text"><small class="text-muted">Время прохождения: @course.estimatedTime ч.</small></p>
+                            <p class="card-text"><small class="text-muted">Дата создания: @course.createdAt</small></p>
+
                             @if(course.creatorId != currentUser.id) {
-<!--                            // TODO: || currentUser ! is able to edit-->
-                            <button class="btn btn-success">Поступить на курс</button>
+                                @if(isUserOnCourse) {
+                                    <div class="d-flex justify-content-between mb-4">
+                                        <a href="/course/@course.id/lms" class="btn btn-success">Перейти к курсу</a>
+                                        <button class="btn btn-danger" onclick="quit()">Отчислиться с курса</button>
+                                    </div>
+                                } else {
+                                    <button class="btn btn-success" onclick="enroll()">Поступить на курс</button>
+                                }
+                            }
+
+                            @if(course.creatorId != currentUser.id) {
+                                <div id="modules-accordion" class="mt-5">
+                                @for((module, moduleIndex) <- modulesWithLessons.zipWithIndex) {
+                                    <div class="card mb-3">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">@module.name</h5>
+                                        </div>
+                                        <div id="module-@module.id" class="collapse show" aria-labelledby="module-@module.id-heading" data-parent="#modules-accordion">
+                                            <div class="card-body border-top">
+                                                <p class="module-description text-muted">@module.description</p>
+                                                <ul class="list-group mb-3">
+                                                @for((lesson, lessonIndex) <- module.lessons.zipWithIndex) {
+                                                    <li class="list-group-item d-flex justify-content-between border">
+                                                        <span>@lesson.name</span>
+                                                    </li>
+                                                }
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                </div>
                             }
                             @if(currentUser.roles.contains("admin")) {
                                 @if(!course.isPublished) {
@@ -57,7 +97,6 @@
                                 }
                             }
                             @if(course.creatorId == currentUser.id) {
-<!--                            // TODO: || currentUser is able to edit-->
                             <form id="courseForm">
                                 <div class="form-group mt-3">
                                     <label for="name">Название курса:</label>
@@ -128,6 +167,48 @@
         });
     }
 
+    function enroll() {
+        const courseId = "@course.id"
+        const studentId = "@currentUser.id"
+
+        fetch(`/course/${courseId}/users/${studentId}/enroll`, {
+            method: 'POST',
+        })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Вы поступили на курс!');
+                        window.location.href = `/course/${courseId}`;
+                    } else {
+                        alert('Ошибка при поступлении на курс');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error enrolling on course.');
+                });
+    }
+
+    function quit() {
+        const courseId = "@course.id"
+        const studentId = "@currentUser.id"
+
+        fetch(`/course/${courseId}/users/${studentId}/quit`, {
+            method: 'DELETE',
+        })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Вы отчислились с курса!');
+                        window.location.href = `/course/${courseId}`;
+                    } else {
+                        alert('Ошибка при отчислении с курса');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error quitting course.');
+                });
+    }
+
     function publish() {
         const courseId = "@course.id";
         fetch(`/course/${courseId}/publish`, {
@@ -166,6 +247,8 @@
             });
     }
 </script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 @views.html.components.js()
 </body>
 </html>

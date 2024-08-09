@@ -56,6 +56,8 @@ trait CourseRepository {
   def swapLessonOrders(left: LessonShort, right: LessonShort): Future[Int]
   def getLessonById(id: UUID): Future[Option[Lesson]]
   def updateLessonContent(id: UUID, content: JValue): Future[Int]
+  def getCoursesByUser(id: UUID): Future[Seq[Course]]
+  def getCreatedCoursesByUser(id: UUID): Future[Seq[Course]]
 }
 
 object CourseRepositoryImpl {
@@ -418,6 +420,36 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
             set content = ${content}
             where id = ${id.toString}::uuid
           """
+
+    db.run(query)
+  }
+
+  override def getCoursesByUser(id: UUID): Future[Seq[Course]] = {
+    val query =
+      sql"""
+          select c.id,
+             c.name,
+             c.creator_id,
+             c.short_description,
+             c.description,
+             c.preview_image_url,
+             c.estimated_time,
+             c.created_at,
+             c.is_published,
+             c.is_free from users_courses uc join
+          courses c on uc.course_id = c.id
+          where uc.user_id = ${id.toString}::uuid
+         """.as[Course]
+
+    db.run(query)
+  }
+
+  override def getCreatedCoursesByUser(id: UUID): Future[Seq[Course]] = {
+    val query =
+      sql"""
+           select * from courses
+           where creator_id = ${id.toString}::uuid
+         """.as[Course]
 
     db.run(query)
   }

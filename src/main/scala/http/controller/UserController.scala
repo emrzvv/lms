@@ -13,7 +13,7 @@ import utils.Serializers
 import views.html.auth.{login, register}
 import views.html.components.{footer, head, header}
 import views.html.home
-import views.html.user.profile
+import views.html.user.{profile, courses}
 
 import java.io.File
 import java.time.LocalDate
@@ -154,7 +154,8 @@ trait UserController {
 
         }
       }
-    } ~ path("user" / JavaUUID / "roles") { id =>
+    } ~
+    path("user" / JavaUUID / "roles") { id =>
       post {
         parameters("action", "role") { (action, role) =>
           authenticatedWithRole("admin") { admin =>
@@ -177,6 +178,15 @@ trait UserController {
                 }
               case None => complete(StatusCodes.NotFound)
             }
+          }
+        }
+    }
+    } ~
+    path("user" / JavaUUID / "courses") { userId =>
+      get {
+        authenticatedWithRole("user") { user =>
+          onSuccess(courseService.getRelatedCoursesByUser(user.id )) { (enrolled, created) =>
+            complete(courses(user, enrolled, created))
           }
         }
       }

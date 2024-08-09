@@ -70,9 +70,15 @@ trait CourseController {
         path(JavaUUID) { id =>
           get {
             authenticatedWithRole("user") { user =>
-              onSuccess(courseService.getById(id)) {
-                case Some(course) => complete(course_preview(user, course))
-                case None => complete(StatusCodes.NotFound)
+              onSuccess {
+                for {
+                  course <- courseService.getById(id) if course.nonEmpty
+                  isUserOnCourse <- courseService.checkIfUserOnCourse(user.id, id)
+                  modulesWithLessons <- courseService.getModulesWithLessons(id)
+                } yield (course.get, isUserOnCourse, modulesWithLessons.sortBy(_.order).map(mls => mls.copy(lessons = mls.lessons.sortBy(_.order))))
+              } {
+                case (course, isUserOnCourse, modulesWithLessons) => complete(course_preview(user, course, isUserOnCourse, modulesWithLessons))
+                case _ => complete(StatusCodes.BadRequest)
               }
             }
           } ~
@@ -163,7 +169,7 @@ trait CourseController {
                     user <- userService.getById(userId) if user.exists(_.roles.contains("tutor"))
                     courseOpt <- courseService.getById(courseId)
                     result <- courseOpt match {
-                      case Some(_) => courseService.grantCourseAccessToUser(userId, courseId).map(_ => StatusCodes.OK)
+                      case Some(_) => courseService.grantCourseAccessToUser(userId, courseId, ableToEdit = true).map(_ => StatusCodes.OK)
                       case None => Future.successful(StatusCodes.NotFound)
                     }
                   } yield result
@@ -175,6 +181,44 @@ trait CourseController {
               }
             }
           }
+        } ~
+        path(JavaUUID / "users" / JavaUUID / "enroll") { (courseId, userId) =>
+          post {
+            authenticatedWithRole("user") { user =>
+              onSuccess {
+                for {
+                  courseOpt <- courseService.getById(courseId)
+                  result <- courseOpt match {
+                    case Some(course) if course.isFree && course.isPublished =>
+                      courseService.addUserToCourse(userId, courseId).map(_ => StatusCodes.OK)
+                    case None => Future.successful(StatusCodes.NotFound)
+                  }
+                } yield result
+              } {
+                r => complete(r)
+              }
+            }
+          }
+        } ~
+        path(JavaUUID / "users" / JavaUUID / "quit") { (courseId, userId) =>
+          delete {
+            authenticatedWithRole("user") { user =>
+              onSuccess {
+                for {
+                  courseOpt  <- courseService.getById(courseId)
+                  result     <- courseOpt match {
+                    case Some(_) => courseService.removeUserFromCourse(userId, courseId).map(_ => StatusCodes.OK)
+                    case None    => Future.successful(StatusCodes.NotFound)
+                  }
+                } yield result
+              } {
+                case StatusCodes.OK         => complete(StatusCodes.OK)
+                case StatusCodes.NotFound   => complete(StatusCodes.NotFound)
+                case StatusCodes.Forbidden  => complete(StatusCodes.Forbidden)
+              }
+            }
+          }
+
         } ~
         path(JavaUUID / "publish") { courseId =>
           put {
