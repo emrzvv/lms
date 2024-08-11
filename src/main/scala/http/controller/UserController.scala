@@ -1,6 +1,6 @@
 package http.controller
 
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.{ContentType, HttpCharsets, MediaTypes, StatusCodes}
 import akka.http.scaladsl.model.headers.HttpCookie
 import akka.http.scaladsl.server.Directives._
 import component.{ActorSystemComponent, Repositories, Services}
@@ -13,8 +13,9 @@ import utils.Serializers
 import views.html.auth.{login, register}
 import views.html.components.{footer, head, header}
 import views.html.home
-import views.html.user.profile
+import views.html.user.{profile, courses}
 
+import java.io.File
 import java.time.LocalDate
 import java.util.UUID
 import scala.concurrent.Future
@@ -59,6 +60,18 @@ trait UserController {
 
   registerRoute(pathPrefix("webjars") {
     webJars
+  })
+
+  registerRoute(pathPrefix("public") {
+    (get & path(Segment)) { fileName =>
+      val file = new File(s"public/$fileName")
+
+      if (file.exists && fileName.endsWith("js")) {
+        getFromFile(file, ContentType(MediaTypes.`application/javascript`, HttpCharsets.`UTF-8`))
+      } else {
+        getFromFile(file)
+      }
+    }
   })
 
   registerRoute(
@@ -141,7 +154,8 @@ trait UserController {
 
         }
       }
-    } ~ path("user" / JavaUUID / "roles") { id =>
+    } ~
+    path("user" / JavaUUID / "roles") { id =>
       post {
         parameters("action", "role") { (action, role) =>
           authenticatedWithRole("admin") { admin =>
@@ -164,6 +178,15 @@ trait UserController {
                 }
               case None => complete(StatusCodes.NotFound)
             }
+          }
+        }
+    }
+    } ~
+    path("user" / JavaUUID / "courses") { userId =>
+      get {
+        authenticatedWithRole("user") { user =>
+          onSuccess(courseService.getRelatedCoursesByUser(user.id )) { (enrolled, created) =>
+            complete(courses(user, enrolled, created))
           }
         }
       }

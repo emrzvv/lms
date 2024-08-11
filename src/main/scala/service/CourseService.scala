@@ -1,8 +1,9 @@
 package service
 
 import akka.http.scaladsl.model.{StatusCode, StatusCodes}
-import db.model.{Course, CourseRepository, Lesson, Module, ModuleLessonOptShort, ModuleWithLessonsShort, User, UsersCoursesMapping}
+import db.model.{Course, CourseRepository, Lesson, Module, ModuleLessonOptShort, ModuleWithLessonsShort, Task, User, UsersCoursesMapping}
 import org.json4s.{JObject, JValue}
+import utils.Pimp.RichString
 
 import java.time.LocalDateTime
 import java.util.UUID
@@ -29,10 +30,11 @@ trait CourseService {
   def getUsersOnCourseWithRights(courseId: UUID): Future[Seq[(User, Boolean)]]
   def addUserToCourse(userId: UUID, courseId: UUID): Future[Int]
   def removeUserFromCourse(userId: UUID, courseId: UUID): Future[Int]
-  def grantCourseAccessToUser(userId: UUID, courseId: UUID): Future[Int]
+  def grantCourseAccessToUser(userId: UUID, courseId: UUID, ableToEdit: Boolean): Future[Int]
   def publishCourse(courseId: UUID): Future[Int]
   def hideCourse(courseId: UUID): Future[Int]
   def getModulesWithLessons(courseId: UUID): Future[Seq[ModuleWithLessonsShort]]
+  def getModulesWithLessonsPrettified(courseId: UUID): Future[Seq[ModuleWithLessonsShort]]
   def addModule(name: String, description: Option[String], courseId: UUID): Future[Int]
   def getModuleById(id: UUID): Future[Option[Module]]
   def deleteModule(id: UUID): Future[Int]
@@ -42,6 +44,18 @@ trait CourseService {
   def updateLesson(lessonId: UUID, name: String): Future[Int]
   def deleteLesson(lessonId: UUID): Future[Int]
   def moveLesson(lessonId: UUID, moduleId: UUID, direction: String): Future[Int]
+  def getLesson(lessonId: UUID): Future[Option[Lesson]]
+  def updateLessonContent(lessonId: UUID, content: JValue): Future[Int]
+  def getCoursesByUser(userId: UUID): Future[Seq[Course]]
+  def getCreatedCoursesByUser(userId: UUID): Future[Seq[Course]]
+  def checkIfUserOnCourse(userId: UUID, courseId: UUID): Future[Boolean]
+  def getRelatedCoursesByUser(userId: UUID): Future[(Seq[Course], Seq[Course])]
+  def defaultCourseAccessChecks(userId: UUID, courseId: UUID): Future[(Boolean, Option[Course])]
+  def getTasksByLessonId(lessonId: UUID): Future[Seq[Task]]
+  def createTask(lessonId: UUID, question: String, answer: String, points: Int): Future[Int]
+  def updateTask(taskId: UUID, question: String, answer: String, points: Int): Future[Int]
+  def getTaskById(taskId: UUID): Future[Option[Task]]
+  def deleteTask(taskId: UUID): Future[Int]
 }
 
 object CourseServiceImpl {
@@ -119,7 +133,7 @@ class CourseServiceImpl(courseRepository: CourseRepository,
     courseRepository.getUsersOnCourse(courseId)
   }
 
-  def getUsersOnCourseWithRights(courseId: UUID): Future[(Seq[(User, Boolean)])] = {
+  def getUsersOnCourseWithRights(courseId: UUID): Future[Seq[(User, Boolean)]] = {
     courseRepository.getUsersOnCourseWithRights(courseId)
   }
 
@@ -131,8 +145,8 @@ class CourseServiceImpl(courseRepository: CourseRepository,
     courseRepository.removeFromMapping(userId, courseId)
   }
 
-  override def grantCourseAccessToUser(userId: UUID, courseId: UUID): Future[Int] = {
-    courseRepository.setValuesInMapping(userId, courseId, ableToEdit = true)
+  override def grantCourseAccessToUser(userId: UUID, courseId: UUID, ableToEdit: Boolean): Future[Int] = {
+    courseRepository.setValuesInMapping(userId, courseId, ableToEdit = ableToEdit)
   }
 
   override def publishCourse(courseId: UUID): Future[Int] = {
@@ -252,5 +266,79 @@ class CourseServiceImpl(courseRepository: CourseRepository,
           case None => Future.successful(0)
         }
     } yield result
+  }
+
+  override def getLesson(lessonId: UUID): Future[Option[Lesson]] = {
+    courseRepository.getLessonById(lessonId)
+  }
+
+  override def updateLessonContent(lessonId: UUID, content: JValue): Future[Int] = {
+    courseRepository.updateLessonContent(lessonId, content)
+  }
+
+  override def getCoursesByUser(userId: UUID): Future[Seq[Course]] = {
+    courseRepository.getCoursesByUser(userId)
+  }
+
+  override def checkIfUserOnCourse(userId: UUID, courseId: UUID): Future[Boolean] = {
+    for {
+      courseUsers <- getUsersOnCourse(courseId)
+      result = courseUsers.exists(_.id == userId)
+    } yield result
+  }
+
+  override def getCreatedCoursesByUser(userId: UUID): Future[Seq[Course]] = {
+    courseRepository.getCreatedCoursesByUser(userId)
+  }
+
+  override def getRelatedCoursesByUser(userId: UUID): Future[(Seq[Course], Seq[Course])] = {
+    for {
+      enrolledCourses <- courseRepository.getCoursesByUser(userId)
+      createdCourses <- courseRepository.getCreatedCoursesByUser(userId)
+    } yield (enrolledCourses, createdCourses)
+  }
+
+  override def defaultCourseAccessChecks(userId: UUID, courseId: UUID): Future[(Boolean, Option[Course])] = {
+    for {
+      courseOpt <- getById(courseId)
+      isUserOnCourse <- checkIfUserOnCourse(userId, courseId)
+    } yield (courseOpt.nonEmpty && isUserOnCourse, courseOpt)
+  }
+
+  override def getModulesWithLessonsPrettified(courseId: UUID): Future[Seq[ModuleWithLessonsShort]] = {
+    getModulesWithLessons(courseId).map(_.sortBy(_.order)
+      .map { mls =>
+        mls.copy(
+          name = mls.name.truncateWithEllipsis(),
+          lessons = mls.lessons.sortBy(_.order).map(l => l.copy(name = l.name.truncateWithEllipsis())))
+      })
+  }
+
+  override def getTasksByLessonId(lessonId: UUID): Future[Seq[Task]] = {
+    courseRepository.getTasksByLessonId(lessonId)
+  }
+
+  override def createTask(lessonId: UUID, question: String, answer: String, points: Int): Future[Int] = {
+    val task = Task(
+      id = UUID.randomUUID(),
+      lessonId = lessonId,
+      question = question,
+      suggestedAnswer = answer,
+      points = points
+    )
+
+    courseRepository.createTask(task)
+  }
+
+  override def updateTask(taskId: UUID, question: String, answer: String, points: Int): Future[Int] = {
+    courseRepository.updateTask(taskId, question, answer, points)
+  }
+
+  override def getTaskById(taskId: UUID): Future[Option[Task]] = {
+    courseRepository.getTaskById(taskId)
+  }
+
+  override def deleteTask(taskId: UUID): Future[Int] = {
+    courseRepository.deleteTask(taskId)
   }
 }

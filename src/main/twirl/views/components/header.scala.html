@@ -25,7 +25,7 @@
                     @if(currentUser.roles.contains("tutor")) {
                     <li><a class="dropdown-item" href="/course/new">Создать курс</a></li>
                     }
-                    <li><a class="dropdown-item" href="#">Моё обучение</a></li>
+                    <li><a class="dropdown-item" href="/user/@currentUser.id/courses">Моё обучение</a></li>
                     <li><a class="dropdown-item" href="/user/@currentUser.id">Профиль</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="/logout">Выйти</a></li>

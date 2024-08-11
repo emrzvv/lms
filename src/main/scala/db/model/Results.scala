@@ -1,6 +1,8 @@
 package db.model
 
 import slick.jdbc.{GetResult, PositionedResult}
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
 
 import java.util.UUID
 
@@ -91,6 +93,28 @@ object Results {
       r.nextStringOption(),
       r.nextInt(),
       r.nextTimestamp().toLocalDateTime
+    )
+  )
+
+  implicit val getLesson: GetResult[Lesson] = GetResult(r =>
+    Lesson(
+      id = r.nextObject().asInstanceOf[UUID],
+      name = r.nextString(),
+      moduleId = r.nextObject().asInstanceOf[UUID],
+      order = r.nextInt(),
+      content = parse(r.nextString()), // String -> JValue
+      createdAt = r.nextTimestamp().toLocalDateTime,
+      passPoints = r.nextInt()
+    )
+  )
+
+  implicit val getTask: GetResult[Task] = GetResult(r =>
+    Task(
+      id = r.nextObject().asInstanceOf[UUID],
+      lessonId = r.nextObject().asInstanceOf[UUID],
+      question = r.nextString(),
+      suggestedAnswer = r.nextString(),
+      points = r.nextInt()
     )
   )
 }

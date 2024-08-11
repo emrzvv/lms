@@ -54,6 +54,15 @@ trait CourseRepository {
   def getLowerLessonShortByOrder(lessonShort: LessonShort, moduleId: UUID): Future[Option[LessonShort]]
   def getUpperLessonShortByOrder(lessonShort: LessonShort, moduleId: UUID): Future[Option[LessonShort]]
   def swapLessonOrders(left: LessonShort, right: LessonShort): Future[Int]
+  def getLessonById(id: UUID): Future[Option[Lesson]]
+  def updateLessonContent(id: UUID, content: JValue): Future[Int]
+  def getCoursesByUser(id: UUID): Future[Seq[Course]]
+  def getCreatedCoursesByUser(id: UUID): Future[Seq[Course]]
+  def getTasksByLessonId(id: UUID): Future[Seq[Task]]
+  def createTask(task: Task): Future[Int]
+  def updateTask(taskId: UUID, question: String, answer: String, points: Int): Future[Int]
+  def getTaskById(taskId: UUID): Future[Option[Task]]
+  def deleteTask(taskId: UUID): Future[Int]
 }
 
 object CourseRepositoryImpl {
@@ -398,5 +407,114 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
       _ <- rightQuery
     } yield 2
     db.run(query.transactionally)
+  }
+
+  override def getLessonById(id: UUID): Future[Option[Lesson]] = {
+    val query =
+      sql"""
+           select * from lessons
+           where id = ${id.toString}::uuid
+         """.as[Lesson].headOption
+    db.run(query)
+  }
+
+  override def updateLessonContent(id: UUID, content: JValue): Future[Int] = {
+    val query =
+      sqlu"""
+            update lessons
+            set content = ${content}
+            where id = ${id.toString}::uuid
+          """
+
+    db.run(query)
+  }
+
+  override def getCoursesByUser(id: UUID): Future[Seq[Course]] = {
+    val query =
+      sql"""
+          select c.id,
+             c.name,
+             c.creator_id,
+             c.short_description,
+             c.description,
+             c.preview_image_url,
+             c.estimated_time,
+             c.created_at,
+             c.is_published,
+             c.is_free from users_courses uc join
+          courses c on uc.course_id = c.id
+          where uc.user_id = ${id.toString}::uuid
+         """.as[Course]
+
+    db.run(query)
+  }
+
+  override def getCreatedCoursesByUser(id: UUID): Future[Seq[Course]] = {
+    val query =
+      sql"""
+           select * from courses
+           where creator_id = ${id.toString}::uuid
+         """.as[Course]
+
+    db.run(query)
+  }
+
+  override def getTasksByLessonId(id: UUID): Future[Seq[Task]] = {
+    val query =
+      sql"""
+           select * from tasks
+           where lesson_id = ${id.toString}::uuid
+         """.as[Task]
+
+    db.run(query)
+  }
+
+  override def createTask(task: Task): Future[Int] = {
+    val query =
+      sqlu"""
+            insert into tasks (id, lesson_id, question, suggested_answer, points) values
+              (
+                ${task.id.toString}::uuid,
+                ${task.lessonId.toString}::uuid,
+                ${task.question},
+                ${task.suggestedAnswer},
+                ${task.points}
+              )
+          """
+
+    db.run(query)
+  }
+
+  override def updateTask(taskId: UUID, question: String, answer: String, points: Int): Future[Int] = {
+    val query =
+      sqlu"""
+            update tasks
+            set question = ${question},
+                suggested_answer = ${answer},
+                points = ${points}
+            where id = ${taskId.toString}::uuid
+          """
+
+    db.run(query)
+  }
+
+  override def getTaskById(taskId: UUID): Future[Option[Task]] = {
+    val query =
+      sql"""
+           select * from tasks
+           where id = ${taskId.toString}::uuid
+         """.as[Task].headOption
+
+    db.run(query)
+  }
+
+  override def deleteTask(taskId: UUID): Future[Int] = {
+    val query =
+      sqlu"""
+           delete from tasks
+           where id = ${taskId.toString}::uuid
+         """
+
+    db.run(query)
   }
 }

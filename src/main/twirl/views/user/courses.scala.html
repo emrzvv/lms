@@ -1,0 +1,65 @@
+@import db.model.User
+@import db.model.Course
+@(
+        currentUser: User,
+        courses: Seq[Course],
+        createdCourses: Seq[Course]
+)
+
+<!doctype html>
+<html lang="en">
+    @views.html.components.head()
+<body>
+    @views.html.components.header(currentUser)
+
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                    <!-- Навигационные вкладки -->
+                <ul class="nav nav-tabs" id="courseTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="enrolled-courses-tab" data-toggle="tab" href="#enrolled-courses" role="tab" aria-controls="enrolled-courses" aria-selected="true">Курсы, которые я прохожу</a>
+                    </li>
+                    @if(currentUser.roles.contains("tutor")) {
+                    <li class="nav-item">
+                        <a class="nav-link" id="created-courses-tab" data-toggle="tab" href="#created-courses" role="tab" aria-controls="created-courses" aria-selected="false">Cозданные курсы</a>
+                    </li>
+                    }
+                </ul>
+
+                    <!-- Содержимое вкладок -->
+                <div class="tab-content" id="courseTabsContent">
+                        <!-- Курсы, которые пользователь проходит -->
+                    <div class="tab-pane fade show active" id="enrolled-courses" role="tabpanel" aria-labelledby="enrolled-courses-tab">
+                        <ul class="list-group mt-3">
+                        @for(course <- courses) {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>@course.name</span>
+                                <a href="/course/@course.id" class="btn btn-primary btn-sm">Перейти к курсу</a>
+                            </li>
+                        }
+                        </ul>
+                    </div>
+
+                        <!-- Курсы, созданные пользователем -->
+                    <div class="tab-pane fade" id="created-courses" role="tabpanel" aria-labelledby="created-courses-tab">
+                        <ul class="list-group mt-3">
+                        @for(course <- createdCourses) {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>@course.name</span>
+                                <a href="/course/@course.id" class="btn btn-secondary btn-sm">Перейти к курсу</a>
+                            </li>
+                        }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!--@views.html.components.footer()-->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+@views.html.components.js()
+</body>
+</html>

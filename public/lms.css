@@ -1,0 +1,99 @@
+.container-with-sidebar {
+    display: flex;
+}
+.sidebar {
+    width: 280px;
+    overflow: hidden;
+    position: relative;
+    padding: 1rem;
+    color: white;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+.main-content {
+    flex-grow: 1;
+    padding: 1rem;
+    margin-left: 0px;
+}
+
+.lesson-item:hover {
+    box-shadow: 0 0 0 2px #adb5bd;
+    background-color: #343a40;
+}
+.course-name-container {
+    position: relative;
+    overflow: hidden;
+}
+
+.course-name {
+    display: block;
+    text-align: center;
+    font-size: clamp(1rem, 2.5vw, 1.5rem);
+    line-height: 1.2;
+}
+.module-item {
+    position: relative; 
+    display: flex;
+    align-items: center;
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    white-space: nowrap; 
+    width: 100%; 
+    box-sizing: border-box; 
+    padding-left:20px;
+}
+
+.module-item::before {
+    content: ""; 
+    position: absolute; 
+    left: 0; 
+    top: 0;
+    bottom: 0;
+    width: 10px; 
+    background-color: #d3d3d3; 
+}
+
+
+.nav ul.nav {
+    margin: 0; 
+    padding-left: 0;
+}
+
+.module-name {
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    white-space: nowrap; 
+}
+
+
+.lesson-item {
+    display: flex;
+    align-items: center;
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    white-space: nowrap; 
+    border-radius: 4px; 
+    transition: box-shadow 0.3s; 
+    width: 100%; 
+    box-sizing: border-box; 
+}
+
+
+.lesson-container {
+    display: flex;
+    align-items: stretch; 
+    margin-left: 10px; 
+}
+
+
+.lesson-stripe {
+    width: 1px; 
+    background-color: #a8a8a8; 
+    margin-right: 5px; 
+}
+
+
+.lesson-container ul.nav {
+    margin: 0; 
+    padding-left: 0;
+}

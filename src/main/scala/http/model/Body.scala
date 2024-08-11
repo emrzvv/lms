@@ -1,5 +1,7 @@
 package http.model
 
+import org.json4s.JValue
+
 import java.util.UUID
 
 case class UpdateCourseRequest(name: String,
@@ -27,3 +29,18 @@ case class UpdateLessonRequest(id: UUID, moduleId: UUID, name: String)
 case class DeleteLessonRequest(id: UUID)
 
 case class MoveLessonRequest(id: UUID, moduleId: UUID, direction: String)
+
+case class UpdateLessonContentRequest(content: JValue)
+
+case class CreateTaskRequest(lessonId: UUID,
+                             question: String,
+                             suggestedAnswer: String,
+                             points: Int)
+
+case class UpdateTaskRequest(taskId: UUID,
+                             lessonId: UUID,
+                             question: String,
+                             suggestedAnswer: String,
+                             points: Int)
+
+case class DeleteTaskRequest(id: UUID)
