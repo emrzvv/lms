@@ -58,6 +58,11 @@ trait CourseRepository {
   def updateLessonContent(id: UUID, content: JValue): Future[Int]
   def getCoursesByUser(id: UUID): Future[Seq[Course]]
   def getCreatedCoursesByUser(id: UUID): Future[Seq[Course]]
+  def getTasksByLessonId(id: UUID): Future[Seq[Task]]
+  def createTask(task: Task): Future[Int]
+  def updateTask(taskId: UUID, question: String, answer: String, points: Int): Future[Int]
+  def getTaskById(taskId: UUID): Future[Option[Task]]
+  def deleteTask(taskId: UUID): Future[Int]
 }
 
 object CourseRepositoryImpl {
@@ -450,6 +455,65 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
            select * from courses
            where creator_id = ${id.toString}::uuid
          """.as[Course]
+
+    db.run(query)
+  }
+
+  override def getTasksByLessonId(id: UUID): Future[Seq[Task]] = {
+    val query =
+      sql"""
+           select * from tasks
+           where lesson_id = ${id.toString}::uuid
+         """.as[Task]
+
+    db.run(query)
+  }
+
+  override def createTask(task: Task): Future[Int] = {
+    val query =
+      sqlu"""
+            insert into tasks (id, lesson_id, question, suggested_answer, points) values
+              (
+                ${task.id.toString}::uuid,
+                ${task.lessonId.toString}::uuid,
+                ${task.question},
+                ${task.suggestedAnswer},
+                ${task.points}
+              )
+          """
+
+    db.run(query)
+  }
+
+  override def updateTask(taskId: UUID, question: String, answer: String, points: Int): Future[Int] = {
+    val query =
+      sqlu"""
+            update tasks
+            set question = ${question},
+                suggested_answer = ${answer},
+                points = ${points}
+            where id = ${taskId.toString}::uuid
+          """
+
+    db.run(query)
+  }
+
+  override def getTaskById(taskId: UUID): Future[Option[Task]] = {
+    val query =
+      sql"""
+           select * from tasks
+           where id = ${taskId.toString}::uuid
+         """.as[Task].headOption
+
+    db.run(query)
+  }
+
+  override def deleteTask(taskId: UUID): Future[Int] = {
+    val query =
+      sqlu"""
+           delete from tasks
+           where id = ${taskId.toString}::uuid
+         """
 
     db.run(query)
   }

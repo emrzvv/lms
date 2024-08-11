@@ -107,4 +107,14 @@ object Results {
       passPoints = r.nextInt()
     )
   )
+
+  implicit val getTask: GetResult[Task] = GetResult(r =>
+    Task(
+      id = r.nextObject().asInstanceOf[UUID],
+      lessonId = r.nextObject().asInstanceOf[UUID],
+      question = r.nextString(),
+      suggestedAnswer = r.nextString(),
+      points = r.nextInt()
+    )
+  )
 }

@@ -1,8 +1,9 @@
 package service
 
 import akka.http.scaladsl.model.{StatusCode, StatusCodes}
-import db.model.{Course, CourseRepository, Lesson, Module, ModuleLessonOptShort, ModuleWithLessonsShort, User, UsersCoursesMapping}
+import db.model.{Course, CourseRepository, Lesson, Module, ModuleLessonOptShort, ModuleWithLessonsShort, Task, User, UsersCoursesMapping}
 import org.json4s.{JObject, JValue}
+import utils.Pimp.RichString
 
 import java.time.LocalDateTime
 import java.util.UUID
@@ -33,6 +34,7 @@ trait CourseService {
   def publishCourse(courseId: UUID): Future[Int]
   def hideCourse(courseId: UUID): Future[Int]
   def getModulesWithLessons(courseId: UUID): Future[Seq[ModuleWithLessonsShort]]
+  def getModulesWithLessonsPrettified(courseId: UUID): Future[Seq[ModuleWithLessonsShort]]
   def addModule(name: String, description: Option[String], courseId: UUID): Future[Int]
   def getModuleById(id: UUID): Future[Option[Module]]
   def deleteModule(id: UUID): Future[Int]
@@ -48,6 +50,12 @@ trait CourseService {
   def getCreatedCoursesByUser(userId: UUID): Future[Seq[Course]]
   def checkIfUserOnCourse(userId: UUID, courseId: UUID): Future[Boolean]
   def getRelatedCoursesByUser(userId: UUID): Future[(Seq[Course], Seq[Course])]
+  def defaultCourseAccessChecks(userId: UUID, courseId: UUID): Future[(Boolean, Option[Course])]
+  def getTasksByLessonId(lessonId: UUID): Future[Seq[Task]]
+  def createTask(lessonId: UUID, question: String, answer: String, points: Int): Future[Int]
+  def updateTask(taskId: UUID, question: String, answer: String, points: Int): Future[Int]
+  def getTaskById(taskId: UUID): Future[Option[Task]]
+  def deleteTask(taskId: UUID): Future[Int]
 }
 
 object CourseServiceImpl {
@@ -288,5 +296,49 @@ class CourseServiceImpl(courseRepository: CourseRepository,
       enrolledCourses <- courseRepository.getCoursesByUser(userId)
       createdCourses <- courseRepository.getCreatedCoursesByUser(userId)
     } yield (enrolledCourses, createdCourses)
+  }
+
+  override def defaultCourseAccessChecks(userId: UUID, courseId: UUID): Future[(Boolean, Option[Course])] = {
+    for {
+      courseOpt <- getById(courseId)
+      isUserOnCourse <- checkIfUserOnCourse(userId, courseId)
+    } yield (courseOpt.nonEmpty && isUserOnCourse, courseOpt)
+  }
+
+  override def getModulesWithLessonsPrettified(courseId: UUID): Future[Seq[ModuleWithLessonsShort]] = {
+    getModulesWithLessons(courseId).map(_.sortBy(_.order)
+      .map { mls =>
+        mls.copy(
+          name = mls.name.truncateWithEllipsis(),
+          lessons = mls.lessons.sortBy(_.order).map(l => l.copy(name = l.name.truncateWithEllipsis())))
+      })
+  }
+
+  override def getTasksByLessonId(lessonId: UUID): Future[Seq[Task]] = {
+    courseRepository.getTasksByLessonId(lessonId)
+  }
+
+  override def createTask(lessonId: UUID, question: String, answer: String, points: Int): Future[Int] = {
+    val task = Task(
+      id = UUID.randomUUID(),
+      lessonId = lessonId,
+      question = question,
+      suggestedAnswer = answer,
+      points = points
+    )
+
+    courseRepository.createTask(task)
+  }
+
+  override def updateTask(taskId: UUID, question: String, answer: String, points: Int): Future[Int] = {
+    courseRepository.updateTask(taskId, question, answer, points)
+  }
+
+  override def getTaskById(taskId: UUID): Future[Option[Task]] = {
+    courseRepository.getTaskById(taskId)
+  }
+
+  override def deleteTask(taskId: UUID): Future[Int] = {
+    courseRepository.deleteTask(taskId)
   }
 }

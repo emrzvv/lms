@@ -11,7 +11,8 @@ import http.auth.JwtSecurity
 import http.model._
 import utils.Serializers
 import views.html.components.{footer, head, header}
-import views.html.course.{course_preview, course_users, courses_all, newcourse, course_content, course_lesson_edit}
+import views.html.course.{preview, users_edit, all, creation, content, lesson_edit}
+import views.html.course.lms.{main, module, lesson}
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization.write
@@ -27,6 +28,8 @@ trait CourseController {
     with ActorSystemComponent
     with Serializers
     with JwtSecurity =>
+
+  import utils.Pimp._
 
   implicit val intUnmarshaller: Unmarshaller[String, Int] = Unmarshaller.strict(_.toInt)
 
@@ -46,7 +49,7 @@ trait CourseController {
         concat(
           get {
             authenticatedWithRole("tutor") { user =>
-              complete(newcourse(user))
+              complete(creation(user))
             }
           },
           post {
@@ -61,7 +64,7 @@ trait CourseController {
             parameters("limit".as[Int].optional, "offset".as[Int].optional) { (limit, offset) =>
               authenticatedWithRole("user") { user =>
                 onSuccess(courseService.allFreeAndPublished(limit.getOrElse(9), offset.getOrElse(0))) { (courses, totalCourses) =>
-                  complete(courses_all(user, courses, limit.getOrElse(9), offset.getOrElse(0), totalCourses))
+                  complete(all(user, courses, limit.getOrElse(9), offset.getOrElse(0), totalCourses))
                 }
               }
             }
@@ -77,7 +80,7 @@ trait CourseController {
                   modulesWithLessons <- courseService.getModulesWithLessons(id)
                 } yield (course.get, isUserOnCourse, modulesWithLessons.sortBy(_.order).map(mls => mls.copy(lessons = mls.lessons.sortBy(_.order))))
               } {
-                case (course, isUserOnCourse, modulesWithLessons) => complete(course_preview(user, course, isUserOnCourse, modulesWithLessons))
+                case (course, isUserOnCourse, modulesWithLessons) => complete(preview(user, course, isUserOnCourse, modulesWithLessons))
                 case _ => complete(StatusCodes.BadRequest)
               }
             }
@@ -110,7 +113,7 @@ trait CourseController {
                   result     <- courseOpt match {
                     case Some(course) =>
                       courseService.getUsersOnCourseWithRights(courseId).map { users =>
-                        complete(course_users(tutor, course, users))
+                        complete(users_edit(tutor, course, users))
                       }
                     case None => Future.successful(complete(StatusCodes.NotFound))
                   }
@@ -249,7 +252,7 @@ trait CourseController {
                 } yield (courseOpt.get, result.sortBy(_.order).map(mls => mls.copy(lessons = mls.lessons.sortBy(_.order))))
               } {
                 case (course, modulesWithLessons) =>
-                  complete(course_content(tutor, course, modulesWithLessons))
+                  complete(content(tutor, course, modulesWithLessons))
               }
             }
           }
@@ -340,9 +343,10 @@ trait CourseController {
                   ableToEdit <- courseService.isAbleToEdit(tutor.id, courseId) if ableToEdit
                   courseOpt <- courseService.getById(courseId) if courseOpt.nonEmpty
                   lessonOpt <- courseService.getLesson(lessonId) if lessonOpt.nonEmpty
-                } yield (courseOpt.get, lessonOpt.get)
-              } { case (course, lesson) =>
-                complete(course_lesson_edit(tutor, course, lesson, compact(render(lesson.content))))
+                  tasks <- courseService.getTasksByLessonId(lessonId)
+                } yield (courseOpt.get, lessonOpt.get, tasks)
+              } { case (course, lesson, tasks) =>
+                complete(lesson_edit(tutor, course, lesson, compact(render(lesson.content)), tasks))
               }
             }
           } ~
@@ -362,6 +366,102 @@ trait CourseController {
                 }
               }
             }
+        } ~
+        path(JavaUUID / "edit" / "lesson" / JavaUUID / "task") { (courseId, lessonId) =>
+          post {
+            authenticatedWithRole("tutor") { tutor =>
+              entity(as[CreateTaskRequest]) { body =>
+                onSuccess {
+                  for {
+                    ableToEdit <- courseService.isAbleToEdit(tutor.id, courseId) if ableToEdit
+                    courseOpt <- courseService.getById(courseId) if courseOpt.nonEmpty
+                    lessonOpt <- courseService.getLesson(lessonId) if lessonOpt.nonEmpty
+                    result <- courseService.createTask(lessonId, body.question, body.suggestedAnswer, body.points)
+                  } yield result
+                }(r => complete(StatusCodes.OK))
+              }
+            }
+          } ~
+            put {
+              authenticatedWithRole("tutor") { tutor =>
+                entity(as[UpdateTaskRequest]) { body =>
+                  onSuccess {
+                    for {
+                      ableToEdit <- courseService.isAbleToEdit(tutor.id, courseId) if ableToEdit
+                      courseOpt <- courseService.getById(courseId) if courseOpt.nonEmpty
+                      lessonOpt <- courseService.getLesson(lessonId) if lessonOpt.nonEmpty
+                      taskOpt <- courseService.getTaskById(body.taskId) if taskOpt.nonEmpty
+                      result <- courseService.updateTask(body.taskId, body.question, body.suggestedAnswer, body.points)
+                    } yield result
+                  }(r => complete(StatusCodes.OK))
+                }
+              }
+            } ~
+            delete {
+              authenticatedWithRole("tutor") { tutor =>
+                entity(as[DeleteTaskRequest]) { body =>
+                  onSuccess {
+                    for {
+                      ableToEdit <- courseService.isAbleToEdit(tutor.id, courseId) if ableToEdit
+                      courseOpt <- courseService.getById(courseId) if courseOpt.nonEmpty
+                      lessonOpt <- courseService.getLesson(lessonId) if lessonOpt.nonEmpty
+                      taskOpt <- courseService.getTaskById(body.id) if taskOpt.nonEmpty
+                      result <- courseService.deleteTask(body.id)
+                    } yield result
+                  }(r => complete(StatusCodes.OK))
+                }
+              }
+            }
+        } ~
+        path(JavaUUID / "lms") { courseId =>
+          get{
+            authenticatedWithRole("user") { user =>
+              onSuccess {
+                for {
+                  (ok, courseOpt) <- courseService.defaultCourseAccessChecks(user.id, courseId) if ok
+                  course = courseOpt.get
+                  modulesWithLessonsShort <- courseService.getModulesWithLessonsPrettified(courseId)
+                } yield (course, modulesWithLessonsShort)
+              } { case (course, modulesWithLessonsShort) =>
+                complete(main(user, course, modulesWithLessonsShort))
+              }
+            }
+          }
+        } ~
+        path(JavaUUID / "lms" / "module" / JavaUUID) { (courseId, moduleId) =>
+          get {
+            authenticatedWithRole("user") { user =>
+              onSuccess {
+                for {
+                  (ok, courseOpt) <- courseService.defaultCourseAccessChecks(user.id, courseId) if ok
+                  course = courseOpt.get
+                  modulesWithLessonsShort <- courseService.getModulesWithLessonsPrettified(courseId)
+                  moduleOpt <- courseService.getModuleById(moduleId) if moduleOpt.nonEmpty
+                  module = moduleOpt.get
+                } yield (course, modulesWithLessonsShort, module)
+              } { case (course, modulesWithLessonsShort, _module) =>
+                complete(module(user, course, modulesWithLessonsShort, _module))
+              }
+            }
+          }
+        } ~
+        path(JavaUUID / "lms" / "lesson" / JavaUUID) { (courseId, lessonId) =>
+          get {
+            authenticatedWithRole("user") { user =>
+              onSuccess {
+                for {
+                  (ok, courseOpt) <- courseService.defaultCourseAccessChecks(user.id, courseId) if ok
+                  course = courseOpt.get
+                  modulesWithLessonsShort <- courseService.getModulesWithLessonsPrettified(courseId)
+                  lessonOpt <- courseService.getLesson(lessonId) if lessonOpt.nonEmpty
+                  lesson = lessonOpt.get
+                  content = compact(render(lesson.content))
+                } yield (course, modulesWithLessonsShort, lesson, content)
+              } { case (course, modulesWithLessonsShort, _lesson, content) =>
+                complete(lesson(user, course, modulesWithLessonsShort, _lesson, content))
+              }
+            }
+          }
         }
     }
   )

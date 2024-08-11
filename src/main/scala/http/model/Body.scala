@@ -31,3 +31,16 @@ case class DeleteLessonRequest(id: UUID)
 case class MoveLessonRequest(id: UUID, moduleId: UUID, direction: String)
 
 case class UpdateLessonContentRequest(content: JValue)
+
+case class CreateTaskRequest(lessonId: UUID,
+                             question: String,
+                             suggestedAnswer: String,
+                             points: Int)
+
+case class UpdateTaskRequest(taskId: UUID,
+                             lessonId: UUID,
+                             question: String,
+                             suggestedAnswer: String,
+                             points: Int)
+
+case class DeleteTaskRequest(id: UUID)

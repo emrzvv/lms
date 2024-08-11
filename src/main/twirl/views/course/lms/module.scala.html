@@ -1,0 +1,36 @@
+@import db.model.{User, Course, Module}
+@import db.model.ModuleWithLessonsShort
+@(currentUser: User,
+        course: Course,
+        modulesWithLessons: Seq[ModuleWithLessonsShort],
+        module: Module)
+
+<!DOCTYPE html>
+<html lang="en">
+    @views.html.components.head()
+<link rel="stylesheet" href="/public/lms.css">
+<body>
+    @views.html.components.header(currentUser)
+    <div class="container-with-sidebar">
+        @views.html.components.lms_sidebar(course, modulesWithLessons)
+
+        <div class="main-content">
+            <div class="container mt-5">
+                <div class="row">
+                    <div class="col-md-8 offset-md-2">
+                        <div class="card border-0">
+                            <h1>@module.name</h1>
+                            <p>@module.description</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+            <!--@views.html.components.footer()-->
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+@views.html.components.js()
+</body>
+</html>

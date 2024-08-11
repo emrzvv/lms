@@ -1,0 +1,43 @@
+@import db.model.ModuleWithLessonsShort
+@import db.model.Course
+@(course: Course, modulesWithLessons: Seq[ModuleWithLessonsShort])
+<div class="sidebar bg-dark">
+    <div class="d-flex justify-content-center align-items-center mb-3 mb-md-0 text-white text-decoration-none w-100 course-name-container">
+        <span class="fs-5 text-center course-name">@course.name</span>
+    </div>
+    <hr>
+    <ul class="nav nav-pills flex-column mb-auto">
+    @for(module <- modulesWithLessons) {
+        <li class="nav-item mt-1">
+            <div class="nav-link text-white bg-secondary mb-2 module-item">
+                <a href="/course/@course.id/lms/module/@module.id" class="text-white text-decoration-none d-flex align-items-center w-100">
+                    <i class="bi bi-folder-fill"></i>
+                    <span class="ms-2 module-name">@module.name</span>
+                </a>
+            </div>
+            <div class="lesson-container">
+                <div class="lesson-stripe mt-2 mb-2"></div>
+                <ul class="nav flex-column ms-3">
+                @for(lesson <- module.lessons) {
+                    <li class="nav-item">
+                        <a href="/course/@course.id/lms/lesson/@lesson.id" class="nav-link text-white bg-dark mb-1 lesson-item d-flex align-items-center text-decoration-none">
+                            <i class="bi bi-file-text-fill me-2"></i>
+                            <span class="text-truncate">@lesson.name</span>
+                        </a>
+                    </li>
+                }
+                </ul>
+            </div>
+        </li>
+    }
+    </ul>
+    <hr>
+    <ul class="nav nav-pills flex-column mb-auto">
+        <li class="nav-item">
+            <a href="#" class="nav-link text-white">
+                <i class="bi bi-file-check-fill"></i>
+                <span class="ms-2">Задачи</span>
+            </a>
+        </li>
+    </ul>
+</div>
