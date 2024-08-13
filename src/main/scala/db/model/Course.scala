@@ -63,6 +63,12 @@ trait CourseRepository {
   def updateTask(taskId: UUID, question: String, answer: String, points: Int): Future[Int]
   def getTaskById(taskId: UUID): Future[Option[Task]]
   def deleteTask(taskId: UUID): Future[Int]
+  def getUserLessonMapping(userId: UUID, lessonId: UUID): Future[Option[UsersLessonsMapping]]
+  def registerUserOnLesson(userId: UUID, lessonId: UUID): Future[Int]
+  def getLessonTasksByUser(userId: UUID, lessonId: UUID): Future[Seq[TaskExt]]
+  def getUserTask(userId: UUID, taskId: UUID): Future[Option[UsersTasksMapping]]
+  def updateUserTaskAnswer(userId: UUID, taskId: UUID, answer: String, points: Int): Future[Int]
+  def registerUserTaskAnswer(userId: UUID, taskId: UUID, answer: String, points: Int): Future[Int]
 }
 
 object CourseRepositoryImpl {
@@ -318,7 +324,7 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
   override def addLesson(lesson: Lesson): Future[Int] = {
     val query =
       sqlu"""
-            insert into lessons (id, name, module_id, "order", content, created_at, pass_points) values
+            insert into lessons (id, name, module_id, "order", content, created_at, pass_points_percentage) values
               (
               ${lesson.id.toString}::uuid,
               ${lesson.name},
@@ -326,7 +332,7 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
               ${lesson.order},
               ${lesson.content},
               ${Timestamp.valueOf(lesson.createdAt)},
-              ${lesson.passPoints}
+              ${lesson.passPointsPercentage}
               )
           """
 
@@ -514,6 +520,89 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
            delete from tasks
            where id = ${taskId.toString}::uuid
          """
+
+    db.run(query)
+  }
+
+  override def getUserLessonMapping(userId: UUID, lessonId: UUID): Future[Option[UsersLessonsMapping]] = {
+    val query =
+      sql"""
+           select * from users_lessons
+           where user_id = ${userId.toString}::uuid and lesson_id = ${lessonId.toString}::uuid
+         """.as[UsersLessonsMapping].headOption
+
+    db.run(query)
+  }
+
+  override def registerUserOnLesson(userId: UUID, lessonId: UUID): Future[Int] = {
+    val query =
+      sqlu"""
+            insert into users_lessons (user_id, lesson_id, points) values
+            (
+              ${userId.toString}::uuid,
+              ${lessonId.toString}::uuid,
+              0
+            )
+          """
+
+    db.run(query)
+  }
+
+  override def getLessonTasksByUser(userId: UUID, lessonId: UUID): Future[Seq[TaskExt]] = {
+    val maybeRegisteredUserTasks = sql"""
+           select t.id, ut.user_id, t.question, t.suggested_answer, ut.answer, t.points, ut.points from tasks t
+            left join users_tasks ut on t.id = ut.task_id
+            where ut.user_id = ${userId.toString}::uuid and t.lesson_id = ${lessonId.toString}::uuid
+         """.as[TaskExt]
+
+    val notRegisteredUserTasks =
+      sql"""
+        select t.id, ut.user_id, t.question, t.suggested_answer, ut.answer, t.points, ut.points from tasks t
+            left join users_tasks ut on t.id = ut.task_id
+            where t.lesson_id = ${lessonId.toString}::uuid
+         """.as[TaskExt]
+    val query =
+      for {
+        a <- maybeRegisteredUserTasks
+        b <- notRegisteredUserTasks
+      } yield (a ++ b).distinctBy(_.taskId)
+
+    db.run(query.transactionally)
+  }
+
+  override def getUserTask(userId: UUID, taskId: UUID): Future[Option[UsersTasksMapping]] = {
+    val query =
+      sql"""
+        select * from users_tasks
+        where user_id = ${userId.toString}::uuid and task_id = ${taskId.toString}::uuid
+         """.as[UsersTasksMapping].headOption
+
+    db.run(query)
+  }
+
+  override def updateUserTaskAnswer(userId: UUID, taskId: UUID, answer: String, points: Int): Future[Int] = {
+    val query =
+      sqlu"""
+            update users_tasks
+            set answer = ${answer}, points = ${points}, submitted_at = ${Timestamp.valueOf(LocalDateTime.now())}
+            where user_id = ${userId.toString}::uuid and task_id = ${taskId.toString}::uuid
+          """
+
+    db.run(query)
+  }
+
+  override def registerUserTaskAnswer(userId: UUID, taskId: UUID, answer: String, points: Int): Future[Int] = {
+    val query =
+      sqlu"""
+            insert into users_tasks(user_id, task_id, answer, points, submitted_at) values
+            (
+              ${userId.toString}::uuid,
+              ${taskId.toString}::uuid,
+              ${answer},
+              ${points},
+              ${Timestamp.valueOf(LocalDateTime.now())}
+            )
+          """
 
     db.run(query)
   }

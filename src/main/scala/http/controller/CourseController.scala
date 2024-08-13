@@ -11,14 +11,15 @@ import http.auth.JwtSecurity
 import http.model._
 import utils.Serializers
 import views.html.components.{footer, head, header}
-import views.html.course.{preview, users_edit, all, creation, content, lesson_edit}
-import views.html.course.lms.{main, module, lesson}
+import views.html.course.{all, content, creation, lesson_edit, preview, users_edit}
+import views.html.course.lms.{lesson, main, module}
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization.write
 
 import java.time.LocalDateTime
 import java.util.UUID
+import scala.collection.convert.ImplicitConversions.`seq AsJavaList`
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
@@ -421,9 +422,10 @@ trait CourseController {
                   (ok, courseOpt) <- courseService.defaultCourseAccessChecks(user.id, courseId) if ok
                   course = courseOpt.get
                   modulesWithLessonsShort <- courseService.getModulesWithLessonsPrettified(courseId)
-                } yield (course, modulesWithLessonsShort)
-              } { case (course, modulesWithLessonsShort) =>
-                complete(main(user, course, modulesWithLessonsShort))
+                  modulesWithLessonsChecked <- courseService.checkIfCompletedForEachLesson(user.id, modulesWithLessonsShort)
+                } yield (course, modulesWithLessonsShort, modulesWithLessonsChecked)
+              } { case (course, modulesWithLessonsShort, modulesWithLessonsChecked) =>
+                complete(main(user, course, modulesWithLessonsShort, modulesWithLessonsChecked))
               }
             }
           }
@@ -436,11 +438,12 @@ trait CourseController {
                   (ok, courseOpt) <- courseService.defaultCourseAccessChecks(user.id, courseId) if ok
                   course = courseOpt.get
                   modulesWithLessonsShort <- courseService.getModulesWithLessonsPrettified(courseId)
+                  modulesWithLessonsChecked <- courseService.checkIfCompletedForEachLesson(user.id, modulesWithLessonsShort)
                   moduleOpt <- courseService.getModuleById(moduleId) if moduleOpt.nonEmpty
                   module = moduleOpt.get
-                } yield (course, modulesWithLessonsShort, module)
-              } { case (course, modulesWithLessonsShort, _module) =>
-                complete(module(user, course, modulesWithLessonsShort, _module))
+                } yield (course, modulesWithLessonsShort, module, modulesWithLessonsChecked)
+              } { case (course, modulesWithLessonsShort, _module, modulesWithLessonsChecked) =>
+                complete(module(user, course, modulesWithLessonsShort, _module, modulesWithLessonsChecked))
               }
             }
           }
@@ -453,12 +456,32 @@ trait CourseController {
                   (ok, courseOpt) <- courseService.defaultCourseAccessChecks(user.id, courseId) if ok
                   course = courseOpt.get
                   modulesWithLessonsShort <- courseService.getModulesWithLessonsPrettified(courseId)
+                  modulesWithLessonsChecked <- courseService.checkIfCompletedForEachLesson(user.id, modulesWithLessonsShort)
                   lessonOpt <- courseService.getLesson(lessonId) if lessonOpt.nonEmpty
                   lesson = lessonOpt.get
                   content = compact(render(lesson.content))
-                } yield (course, modulesWithLessonsShort, lesson, content)
-              } { case (course, modulesWithLessonsShort, _lesson, content) =>
-                complete(lesson(user, course, modulesWithLessonsShort, _lesson, content))
+                  tasks <- courseService.getUserTasksByLessonId(user.id, lessonId)
+                  register <- courseService.registerUserOnLesson(user.id, lessonId)
+                } yield (course, modulesWithLessonsShort, lesson, content, tasks, modulesWithLessonsChecked)
+              } { case (course, modulesWithLessonsShort, _lesson, content, tasks, modulesWithLessonsChecked) =>
+                complete(lesson(user, course, modulesWithLessonsShort, _lesson, content, tasks, modulesWithLessonsChecked))
+              }
+            }
+          }
+        } ~
+        path(JavaUUID / "lms" / "lesson" / JavaUUID / "task" / "submit") { (courseId, lessonId) =>
+          post {
+            authenticatedWithRole("user") { user =>
+              entity(as[SubmitTaskRequest]) { body =>
+                onSuccess {
+                  for {
+                    (ok, courseOpt) <- courseService.defaultCourseAccessChecks(user.id, courseId) if ok
+                    lessonOpt <- courseService.getLesson(lessonId) if lessonOpt.nonEmpty
+                    taskOpt <- courseService.getTaskById(body.taskId) if taskOpt.nonEmpty
+                    task = taskOpt.get
+                    registerAnswer <- courseService.registerAnswerOnTask(user.id, task, body.answer)
+                  } yield (registerAnswer)
+                } { _ => complete(StatusCodes.OK)}
               }
             }
           }

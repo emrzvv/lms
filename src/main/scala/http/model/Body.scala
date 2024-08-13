@@ -44,3 +44,6 @@ case class UpdateTaskRequest(taskId: UUID,
                              points: Int)
 
 case class DeleteTaskRequest(id: UUID)
+
+case class SubmitTaskRequest(taskId: UUID,
+                             answer: String)

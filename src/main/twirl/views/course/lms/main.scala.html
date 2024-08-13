@@ -1,6 +1,7 @@
 @import db.model.{User, Course, Lesson}
 @import db.model.ModuleWithLessonsShort
-@(currentUser: User, course: Course, modulesWithLessons: Seq[ModuleWithLessonsShort])
+@import db.model.ModuleWithLessonsShortExt
+@(currentUser: User, course: Course, modulesWithLessons: Seq[ModuleWithLessonsShort], modulesWithLessonsChecked: Seq[ModuleWithLessonsShortExt])
 
 <!DOCTYPE html>
 <html lang="en">
@@ -9,7 +10,7 @@
 <body>
 @views.html.components.header(currentUser)
 <div class="container-with-sidebar">
-    @views.html.components.lms_sidebar(course, modulesWithLessons)
+    @views.html.components.lms_sidebar(course, modulesWithLessons, modulesWithLessonsChecked)
 
     <div class="main-content">
         <div class="container mt-5">

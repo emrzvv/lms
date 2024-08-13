@@ -1,7 +1,7 @@
 package service
 
 import akka.http.scaladsl.model.{StatusCode, StatusCodes}
-import db.model.{Course, CourseRepository, Lesson, Module, ModuleLessonOptShort, ModuleWithLessonsShort, Task, User, UsersCoursesMapping}
+import db.model.{Course, CourseRepository, Lesson, Module, ModuleLessonOptShort, ModuleWithLessonsShort, ModuleWithLessonsShortExt, Task, TaskExt, User, UsersCoursesMapping}
 import org.json4s.{JObject, JValue}
 import utils.Pimp.RichString
 
@@ -56,6 +56,10 @@ trait CourseService {
   def updateTask(taskId: UUID, question: String, answer: String, points: Int): Future[Int]
   def getTaskById(taskId: UUID): Future[Option[Task]]
   def deleteTask(taskId: UUID): Future[Int]
+  def registerUserOnLesson(userId: UUID, lessonId: UUID): Future[Int]
+  def getUserTasksByLessonId(userId: UUID, lessonId: UUID): Future[Seq[TaskExt]]
+  def registerAnswerOnTask(userId: UUID, task: Task, answer: String): Future[Int]
+  def checkIfCompletedForEachLesson(userId: UUID, modulesWithLessons: Seq[ModuleWithLessonsShort]): Future[Seq[ModuleWithLessonsShortExt]]
 }
 
 object CourseServiceImpl {
@@ -238,7 +242,7 @@ class CourseServiceImpl(courseRepository: CourseRepository,
         order = lastLessonOrder,
         content = JObject(),
         createdAt = LocalDateTime.now(),
-        passPoints = 0
+        passPointsPercentage = 100
       )
       result <- courseRepository.addLesson(lesson)
     } yield result
@@ -340,5 +344,58 @@ class CourseServiceImpl(courseRepository: CourseRepository,
 
   override def deleteTask(taskId: UUID): Future[Int] = {
     courseRepository.deleteTask(taskId)
+  }
+
+  override def registerUserOnLesson(userId: UUID, lessonId: UUID): Future[Int] = {
+    for {
+      userLessonMapping <- courseRepository.getUserLessonMapping(userId, lessonId)
+      result <- userLessonMapping match {
+        case Some(_) => Future.successful(0)
+        case None => courseRepository.registerUserOnLesson(userId, lessonId)
+      }
+    } yield result
+  }
+
+  override def getUserTasksByLessonId(userId: UUID, lessonId: UUID): Future[Seq[TaskExt]] = {
+    courseRepository.getLessonTasksByUser(userId, lessonId)
+  }
+
+  override def registerAnswerOnTask(userId: UUID, task: Task, answer: String): Future[Int] = {
+    val points = if (task.suggestedAnswer == answer) task.points else 0
+    for {
+      previousAnswerOpt <- courseRepository.getUserTask(userId, task.id)
+      result <- previousAnswerOpt match {
+        case Some(_) => courseRepository.updateUserTaskAnswer(userId, task.id, answer, points)
+        case None => courseRepository.registerUserTaskAnswer(userId, task.id, answer, points)
+      }
+    } yield result
+  }
+
+  override def checkIfCompletedForEachLesson(userId: UUID,
+                                             modulesWithLessons: Seq[ModuleWithLessonsShort]): Future[Seq[ModuleWithLessonsShortExt]] = {
+    Future.sequence {
+      modulesWithLessons.map { module =>
+        val lessonsWithCompletion = Future.sequence {
+          module.lessons.map { lesson =>
+            for {
+              lessonFullOpt <- courseRepository.getLessonById(lesson.id)
+              lessonFull = lessonFullOpt.get
+              allTasks <- courseRepository.getLessonTasksByUser(userId, lesson.id)
+              score = allTasks.map(_.userPoints).sum
+              max = allTasks.map(_.points).sum
+              isCompleted = (score >= (lessonFull.passPointsPercentage * max) / 100)
+            } yield (lesson, isCompleted)
+          }
+        }
+
+        lessonsWithCompletion.map { lessons =>
+          ModuleWithLessonsShortExt(
+            id = module.id,
+            order = module.order,
+            lessonsCompleted = lessons
+          )
+        }
+      }
+    }
   }
 }

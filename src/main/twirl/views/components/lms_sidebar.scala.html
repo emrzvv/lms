@@ -1,13 +1,14 @@
 @import db.model.ModuleWithLessonsShort
 @import db.model.Course
-@(course: Course, modulesWithLessons: Seq[ModuleWithLessonsShort])
+@import db.model.ModuleWithLessonsShortExt
+@(course: Course, modulesWithLessons: Seq[ModuleWithLessonsShort], modulesWithLessonsChecked: Seq[ModuleWithLessonsShortExt])
 <div class="sidebar bg-dark">
-    <div class="d-flex justify-content-center align-items-center mb-3 mb-md-0 text-white text-decoration-none w-100 course-name-container">
+    <a href="/course/@course.id/lms" class="d-flex justify-content-center align-items-center mb-3 mb-md-0 text-white text-decoration-none w-100 course-name-container">
         <span class="fs-5 text-center course-name">@course.name</span>
-    </div>
+    </a>
     <hr>
     <ul class="nav nav-pills flex-column mb-auto">
-    @for(module <- modulesWithLessons) {
+    @for((module, moduleExt) <- modulesWithLessons.zip(modulesWithLessonsChecked)) {
         <li class="nav-item mt-1">
             <div class="nav-link text-white bg-secondary mb-2 module-item">
                 <a href="/course/@course.id/lms/module/@module.id" class="text-white text-decoration-none d-flex align-items-center w-100">
@@ -18,11 +19,15 @@
             <div class="lesson-container">
                 <div class="lesson-stripe mt-2 mb-2"></div>
                 <ul class="nav flex-column ms-3">
-                @for(lesson <- module.lessons) {
+                @for((lesson, isCompleted) <- moduleExt.lessonsCompleted) {
                     <li class="nav-item">
                         <a href="/course/@course.id/lms/lesson/@lesson.id" class="nav-link text-white bg-dark mb-1 lesson-item d-flex align-items-center text-decoration-none">
-                            <i class="bi bi-file-text-fill me-2"></i>
-                            <span class="text-truncate">@lesson.name</span>
+                            @if(isCompleted) {
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            } else {
+                                <i class="bi bi-circle me-2"></i>
+                            }
+                        <span class="text-truncate">@lesson.name</span>
                         </a>
                     </li>
                 }
