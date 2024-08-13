@@ -44,7 +44,7 @@ CREATE TABLE "lessons" (
   "order" integer NOT NULL,
   "content" jsonb NOT NULL,
   "created_at" timestamp NOT NULL DEFAULT now(),
-  "pass_points" integer NOT NULL DEFAULT 0,
+  "pass_points_percentage" integer NOT NULL DEFAULT 100,
   CONSTRAINT "fk_module_id" FOREIGN KEY ("module_id") REFERENCES "modules"("id")
 );
 
@@ -81,7 +81,7 @@ CREATE TABLE "users_tasks" (
   "task_id" uuid NOT NULL,
   "answer" text NOT NULL,
   "submitted_at" timestamp NOT NULL DEFAULT now(),
-  "is_passed" bool NOT NULL DEFAULT false,
+  "points" integer NOT NULL DEFAULT 0,
   PRIMARY KEY ("user_id", "task_id"),
   CONSTRAINT "fk_user_task_user_id" FOREIGN KEY ("user_id") REFERENCES "users"("id"),
   CONSTRAINT "fk_user_task_task_id" FOREIGN KEY ("task_id") REFERENCES "tasks"("id")

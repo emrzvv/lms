@@ -104,7 +104,7 @@ object Results {
       order = r.nextInt(),
       content = parse(r.nextString()), // String -> JValue
       createdAt = r.nextTimestamp().toLocalDateTime,
-      passPoints = r.nextInt()
+      passPointsPercentage = r.nextInt()
     )
   )
 
@@ -114,6 +114,36 @@ object Results {
       lessonId = r.nextObject().asInstanceOf[UUID],
       question = r.nextString(),
       suggestedAnswer = r.nextString(),
+      points = r.nextInt()
+    )
+  )
+
+  implicit val getUsersLessonsMapping: GetResult[UsersLessonsMapping] = GetResult(r =>
+    UsersLessonsMapping(
+      userId = r.nextObject().asInstanceOf[UUID],
+      lessonId = r.nextObject().asInstanceOf[UUID],
+      points = r.nextInt()
+    )
+  )
+
+  implicit val getTaskExt: GetResult[TaskExt] = GetResult(r =>
+    TaskExt(
+      taskId = r.nextObject().asInstanceOf[UUID],
+      userId = r.nextObjectOption().asInstanceOf[Option[UUID]],
+      question = r.nextString(),
+      suggestedAnswer = r.nextString(),
+      userAnswer = r.nextStringOption(),
+      points = r.nextInt(),
+      userPoints = r.nextIntOption().getOrElse(0)
+    )
+  )
+
+  implicit val getUsersTasksMapping: GetResult[UsersTasksMapping] = GetResult(r =>
+    UsersTasksMapping(
+      userId = r.nextObject().asInstanceOf[UUID],
+      taskId = r.nextObject().asInstanceOf[UUID],
+      answer = r.nextString(),
+      submittedAt = r.nextTimestamp().toLocalDateTime,
       points = r.nextInt()
     )
   )

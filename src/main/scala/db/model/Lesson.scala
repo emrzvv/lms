@@ -11,4 +11,4 @@ case class Lesson(id: UUID,
                   order: Int,
                   content: JValue,
                   createdAt: LocalDateTime,
-                  passPoints: Int)
+                  passPointsPercentage: Int)
