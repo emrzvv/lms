@@ -1,4 +1,4 @@
-@import db.model.{User, Course, Lesson, Task}
+@import db.model.{User, Course, Lesson, Task, TaskSimpleAnswer, TaskChooseOne, TaskChooseMany}
 @(currentUser: User, course: Course, lesson: Lesson, contentStr: String, tasks: Seq[Task])
 
 <!DOCTYPE html>
@@ -32,6 +32,29 @@
             border-radius: 0.25rem;
             margin-bottom: 0.5rem;
         }
+        .task-variants {
+            margin-top: 10px;
+            padding-left: 15px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .task-variants strong {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .task-variants ul {
+            padding-left: 20px;
+            list-style-type: disc;
+            margin-top: 5px;
+            margin-bottom: 10px;
+        }
+
+        .task-variants li {
+            margin-bottom: 5px;
+        }
 </style>
 <body>
     @views.html.components.header(currentUser)
@@ -55,20 +78,88 @@
                         </div>
                         <button type="button" class="btn btn-primary mt-3" id="saveButton" onclick="onSaveEditor()">Сохранить</button>
 
-                            <!-- Секция для списка задач -->
+                        <!-- Секция для списка задач -->
                         <div class="task-list">
                             <h4>Задачи</h4>
                             @for(task <- tasks) {
                                 <div class="task-item">
                                     <span>@task.question</span>
-                                    <div>
-                                        <button class="btn btn-secondary btn-sm me-2" onclick="openTaskModal(event, 'Редактировать задачу', '@task.id', '@task.question', '@task.suggestedAnswer', '@task.points')"><i class="bi bi-pencil-square"></i></button>
-                                        <button class="btn btn-danger btn-sm" onclick="deleteTask('@task.id')"><i class="bi bi-trash3"></i></button>
-                                    </div>
+
+                                    <!-- Определяем, как отображать задачу и передавать её данные в модальное окно в зависимости от типа -->
+                                    @task match {
+                                        case taskSimple: TaskSimpleAnswer => {
+                                            <div class="task-answer">
+                                                <strong>Ответ: </strong>@taskSimple.suggestedAnswer
+                                            </div>
+                                            <div class="task-actions">
+                                                <button class="btn btn-secondary btn-sm me-2"
+                                                    onclick="openTaskModal(event, 'Редактировать задачу', '@taskSimple.id', '@taskSimple.question', 'TaskSimpleAnswer', '@taskSimple.points', '@taskSimple.suggestedAnswer')">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+                                                <button class="btn btn-danger btn-sm" onclick="deleteTask('@taskSimple.id')">
+                                                    <i class="bi bi-trash3"></i>
+                                                </button>
+                                            </div>
+                                        }
+
+                                        case taskOneChoice: TaskChooseOne => {
+                                            <div class="task-variants">
+                                                <strong>Варианты:</strong>
+                                                <ul>
+                                                    @for(variant <- taskOneChoice.variants) {
+                                                        <li>@variant</li>
+                                                    }
+                                                </ul>
+                                                <strong>Выбранный вариант: </strong>@taskOneChoice.suggestedVariant
+                                            </div>
+                                            <div class="task-actions">
+                                                <button class="btn btn-secondary btn-sm me-2"
+                                                    onclick="openTaskModal(event, 'Редактировать задачу', '@taskOneChoice.id', '@taskOneChoice.question', 'TaskChooseOne', '@taskOneChoice.points', '', '@taskOneChoice.variants.mkString(",")', '@taskOneChoice.suggestedVariant')">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+                                                <button class="btn btn-danger btn-sm" onclick="deleteTask('@taskOneChoice.id')">
+                                                    <i class="bi bi-trash3"></i>
+                                                </button>
+                                            </div>
+                                        }
+
+                                        case taskManyChoice: TaskChooseMany => {
+                                            <div class="task-variants">
+                                                <strong>Варианты:</strong>
+                                                <ul>
+                                                    @for(variant <- taskManyChoice.variants) {
+                                                        <li>@variant</li>
+                                                    }
+                                                </ul>
+                                                <strong>Выбранные варианты: </strong>
+                                                <ul>
+                                                    @for(suggestedVariant <- taskManyChoice.suggestedVariants) {
+                                                        <li>@suggestedVariant</li>
+                                                    }
+                                                </ul>
+                                            </div>
+                                            <div class="task-actions">
+                                                <button class="btn btn-secondary btn-sm me-2"
+                                                    onclick="openTaskModal(event, 'Редактировать задачу', '@taskManyChoice.id', '@taskManyChoice.question', 'TaskChooseMany', '@taskManyChoice.points', '', '@taskManyChoice.variants.mkString(",")', '@taskManyChoice.suggestedVariants.mkString(",")')">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+                                                <button class="btn btn-danger btn-sm" onclick="deleteTask('@taskManyChoice.id')">
+                                                    <i class="bi bi-trash3"></i>
+                                                </button>
+                                            </div>
+                                        }
+
+                                        case _ => {
+                                            <div class="task-unknown">
+                                                <strong>Неизвестный тип задачи</strong>
+                                            </div>
+                                        }
+                                    }
                                 </div>
                             }
                             <button type="button" class="btn btn-dark mt-3" onclick="openTaskModal(event, 'Добавить задачу')">Добавить задачу</button>
                         </div>
+
                     </div>
                 </div>
             </div>
@@ -90,17 +181,47 @@
                             <label for="taskQuestion">Вопрос</label>
                             <textarea class="form-control" id="taskQuestion" required></textarea>
                         </div>
-                        <div class="form-group mt-3">
-                            <label for="taskAnswer">Предполагаемый ответ</label>
-                            <textarea class="form-control" id="taskAnswer" required></textarea>
+
+                        <!-- Селектор типа задачи, доступен только при создании новой задачи -->
+                        <div class="form-group mt-3" id="taskTypeContainer">
+                            <label for="taskType">Тип задачи</label>
+                            <select class="form-control" id="taskType" required>
+                                <option value="">Выберите тип задачи</option>
+                                <option value="TaskSimpleAnswer">Простой ответ</option>
+                                <option value="TaskChooseOne">Один правильный ответ</option>
+                                <option value="TaskChooseMany">Несколько правильных ответов</option>
+                            </select>
                         </div>
+
+                        <!-- Поля для типа TaskSimpleAnswer -->
+                        <div class="form-group mt-3" id="simpleAnswerContainer" style="display: none;">
+                            <label for="taskSimpleAnswer">Предполагаемый ответ</label>
+                            <textarea class="form-control" id="taskSimpleAnswer"></textarea>
+                        </div>
+
+                        <!-- Поля для типа TaskChooseOne -->
+                        <div class="form-group mt-3" id="chooseOneContainer" style="display: none;">
+                            <label for="taskVariants">Варианты (через запятую)</label>
+                            <textarea class="form-control" id="taskVariants"></textarea>
+                            <label for="taskSuggestedVariant" class="mt-3">Правильный вариант</label>
+                            <input type="text" class="form-control" id="taskSuggestedVariant">
+                        </div>
+
+                        <!-- Поля для типа TaskChooseMany -->
+                        <div class="form-group mt-3" id="chooseManyContainer" style="display: none;">
+                            <label for="taskVariantsMany">Варианты (через запятую)</label>
+                            <textarea class="form-control" id="taskVariantsMany"></textarea>
+                            <label for="taskSuggestedVariants" class="mt-3">Правильные варианты (через запятую)</label>
+                            <textarea class="form-control" id="taskSuggestedVariants"></textarea>
+                        </div>
+
                         <div class="form-group mt-3">
                             <label for="taskPoints">Количество баллов за правильный ответ</label>
                             <input type="number" class="form-control" id="taskPoints"
-                                    inputmode="numeric"
-                                    pattern="\d*"
-                                    oninput="this.value = this.value.replace(/[^0-9]/g, '');"
-                                    required>
+                                   inputmode="numeric"
+                                   pattern="\d*"
+                                   oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+                                   required>
                         </div>
                         <input type="hidden" id="taskId">
                         <button type="button" class="btn btn-primary mt-3" onclick="handleSaveTask()">Сохранить</button>
@@ -136,6 +257,7 @@
         data: content
     });
 
+
     // Сохранение контента редактора
     function onSaveEditor() {
         const courseId = '@course.id';
@@ -160,38 +282,100 @@
         });
     }
 
-    function openTaskModal(event, title = '', taskId = '', taskQuestion = '', taskAnswer = '', taskPoints = '') {
+    document.getElementById('taskType').addEventListener('change', function () {
+        const taskType = this.value;
+
+        // Скрываем все контейнеры
+        document.getElementById('simpleAnswerContainer').style.display = 'none';
+        document.getElementById('chooseOneContainer').style.display = 'none';
+        document.getElementById('chooseManyContainer').style.display = 'none';
+
+        // Отображаем контейнер в зависимости от выбранного типа задачи
+        if (taskType === 'TaskSimpleAnswer') {
+            document.getElementById('simpleAnswerContainer').style.display = 'block';
+        } else if (taskType === 'TaskChooseOne') {
+            document.getElementById('chooseOneContainer').style.display = 'block';
+        } else if (taskType === 'TaskChooseMany') {
+            document.getElementById('chooseManyContainer').style.display = 'block';
+        }
+    });
+
+    function openTaskModal(event, title = '', taskId = '', taskQuestion = '', taskType = '', taskPoints = '', taskData = {}) {
         event.stopPropagation();
         document.getElementById('taskModalLabel').textContent = title;
         document.getElementById('taskId').value = taskId;
         document.getElementById('taskQuestion').value = taskQuestion;
-        document.getElementById('taskAnswer').value = taskAnswer;
         document.getElementById('taskPoints').value = taskPoints;
+
+        // Сбрасываем и скрываем все специфические поля
+        document.getElementById('taskTypeContainer').style.display = 'block';
+        document.getElementById('taskType').value = taskType;
+        document.getElementById('simpleAnswerContainer').style.display = 'none';
+        document.getElementById('chooseOneContainer').style.display = 'none';
+        document.getElementById('chooseManyContainer').style.display = 'none';
+
+        if (taskId) {
+            document.getElementById('taskTypeContainer').style.display = 'none';
+        }
+
+        if (taskType === 'TaskSimpleAnswer') {
+            document.getElementById('simpleAnswerContainer').style.display = 'block';
+            document.getElementById('taskSimpleAnswer').value = taskData.suggestedAnswer || '';
+
+        } else if (taskType === 'TaskChooseOne') {
+            document.getElementById('chooseOneContainer').style.display = 'block';
+            document.getElementById('taskVariants').value = taskData.variants ? taskData.variants.join(',') : '';
+            document.getElementById('taskSuggestedVariant').value = taskData.suggestedVariant || '';
+
+        } else if (taskType === 'TaskChooseMany') {
+            document.getElementById('chooseManyContainer').style.display = 'block';
+            document.getElementById('taskVariantsMany').value = taskData.variants ? taskData.variants.join(',') : '';
+            document.getElementById('taskSuggestedVariants').value = taskData.suggestedVariants ? taskData.suggestedVariants.join(',') : '';
+        }
+
         $('#taskModal').modal('show');
     }
 
     function handleSaveTask() {
         const taskId = document.getElementById('taskId').value;
         const question = document.getElementById('taskQuestion').value;
-        const answer = document.getElementById('taskAnswer').value;
+        const taskType = document.getElementById('taskType').value;
         const points = parseInt(document.getElementById('taskPoints').value, 10);
 
         const courseId = '@course.id';
         const lessonId = '@lesson.id';
 
-        const url = `/course/${courseId}/edit/lesson/${lessonId}/task`;
-        const method = taskId ? 'PUT' : 'POST';
-
-        const body = {
+        let body = {
             lessonId: lessonId,
             question: question,
-            suggestedAnswer: answer,
-            points: points
+            points: points,
+            taskType: taskType
         };
 
-        if (taskId) {
-            body.taskId = taskId
+        // В зависимости от типа задачи, добавляем соответствующие данные в тело запроса
+        if (taskType === 'TaskSimpleAnswer') {
+            const suggestedAnswer = document.getElementById('taskSimpleAnswer').value;
+            body.suggestedAnswer = suggestedAnswer;
+
+        } else if (taskType === 'TaskChooseOne') {
+            const variants = document.getElementById('taskVariants').value.split(',');
+            const suggestedVariant = document.getElementById('taskSuggestedVariant').value;
+            body.variants = variants;
+            body.suggestedVariant = suggestedVariant;
+
+        } else if (taskType === 'TaskChooseMany') {
+            const variants = document.getElementById('taskVariantsMany').value.split(',');
+            const suggestedVariants = document.getElementById('taskSuggestedVariants').value.split(',');
+            body.variants = variants;
+            body.suggestedVariants = suggestedVariants;
         }
+
+        if (taskId) {
+            body.taskId = taskId;
+        }
+
+        const url = `/course/${courseId}/edit/lesson/${lessonId}/task`;
+        const method = taskId ? 'PUT' : 'POST';
 
         fetch(url, {
             method: method,
@@ -244,6 +428,43 @@
             console.error('Error:', error);
             alert('Произошла ошибка при удалении задачи');
         });
+    }
+
+    function updateTaskFormFields() {
+        const taskType = document.getElementById('taskType').value;
+        const specificFieldsDiv = document.getElementById('taskSpecificFields');
+        specificFieldsDiv.innerHTML = '';
+
+        if (taskType === 'TaskSimpleAnswer') {
+            specificFieldsDiv.innerHTML = `
+                <div class="form-group mt-3">
+                    <label for="taskAnswer">Предполагаемый ответ</label>
+                    <textarea class="form-control" id="taskAnswer" required></textarea>
+                </div>
+            `;
+        } else if (taskType === 'TaskChooseOne') {
+            specificFieldsDiv.innerHTML = `
+                <div class="form-group mt-3">
+                    <label for="taskVariants">Варианты (через запятую)</label>
+                    <textarea class="form-control" id="taskVariants" required></textarea>
+                </div>
+                <div class="form-group mt-3">
+                    <label for="taskSuggestedVariant">Правильный вариант</label>
+                    <input type="text" class="form-control" id="taskSuggestedVariant" required>
+                </div>
+            `;
+        } else if (taskType === 'TaskChooseMany') {
+            specificFieldsDiv.innerHTML = `
+                <div class="form-group mt-3">
+                    <label for="taskVariants">Варианты (через запятую)</label>
+                    <textarea class="form-control" id="taskVariants" required></textarea>
+                </div>
+                <div class="form-group mt-3">
+                    <label for="taskSuggestedVariants">Правильные варианты (через запятую)</label>
+                    <textarea class="form-control" id="taskSuggestedVariants" required></textarea>
+                </div>
+            `;
+        }
     }
 </script>
 </body>

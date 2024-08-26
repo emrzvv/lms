@@ -108,21 +108,40 @@ object Results {
     )
   )
 
-  implicit val getTask: GetResult[Task] = GetResult(r =>
-    Task(
+  implicit val getBaseTask: GetResult[BaseTask] = GetResult(r =>
+    BaseTask(
       id = r.nextObject().asInstanceOf[UUID],
       lessonId = r.nextObject().asInstanceOf[UUID],
       question = r.nextString(),
-      suggestedAnswer = r.nextString(),
-      points = r.nextInt()
+      points = r.nextInt(),
+      taskType = r.nextString()
     )
   )
+
+  implicit val getTaskSimpleAnswerDB: GetResult[TaskSimpleAnswerDB] = GetResult(r =>
+    TaskSimpleAnswerDB(
+      id = r.nextObject().asInstanceOf[UUID],
+      suggestedAnswer = r.nextString()
+    )
+  )
+  implicit val getTaskChooseOneDB: GetResult[TaskChooseOneDB] = GetResult(r =>
+    TaskChooseOneDB(
+      id = r.nextObject().asInstanceOf[UUID],
+      variants = r.nextString().stripPrefix("{").stripSuffix("}").split(",").map(_.trim).toSeq,
+      suggestedVariant = r.nextString()
+    )
+  )
+  implicit val getTaskChooseManyDB: GetResult[TaskChooseManyDB] = GetResult(r =>
+    TaskChooseManyDB(
+      id = r.nextObject().asInstanceOf[UUID],
+      variants = r.nextString().stripPrefix("{").stripSuffix("}").split(",").map(_.trim).toSeq,
+      suggestedVariants = r.nextString().stripPrefix("{").stripSuffix("}").split(",").map(_.trim).toSeq
+    ))
 
   implicit val getUsersLessonsMapping: GetResult[UsersLessonsMapping] = GetResult(r =>
     UsersLessonsMapping(
       userId = r.nextObject().asInstanceOf[UUID],
-      lessonId = r.nextObject().asInstanceOf[UUID],
-      points = r.nextInt()
+      lessonId = r.nextObject().asInstanceOf[UUID]
     )
   )
 
@@ -131,10 +150,14 @@ object Results {
       taskId = r.nextObject().asInstanceOf[UUID],
       userId = r.nextObjectOption().asInstanceOf[Option[UUID]],
       question = r.nextString(),
-      suggestedAnswer = r.nextString(),
-      userAnswer = r.nextStringOption(),
+      taskType = r.nextString(),
       points = r.nextInt(),
-      userPoints = r.nextIntOption().getOrElse(0)
+      userPoints = r.nextIntOption().getOrElse(0),
+      variants = r.nextStringOption().map { str =>
+        val cleanedStr = str.stripPrefix("{").stripSuffix("}")
+        if (cleanedStr.isEmpty) Seq.empty[String]
+        else cleanedStr.split(",").map(_.trim).toSeq
+      }
     )
   )
 
@@ -147,4 +170,35 @@ object Results {
       points = r.nextInt()
     )
   )
+
+  implicit val getUsersTasksSimpleAnswer: GetResult[UsersTasksSimpleAnswer] = GetResult(r =>
+    UsersTasksSimpleAnswer(
+      userId = r.nextObject().asInstanceOf[UUID],
+      taskId = r.nextObject().asInstanceOf[UUID],
+      answer = r.nextString()
+    )
+  )
+
+  implicit val getUsersTasksChooseOne: GetResult[UsersTasksChooseOne] = GetResult(r =>
+    UsersTasksChooseOne(
+      userId = r.nextObject().asInstanceOf[UUID],
+      taskId = r.nextObject().asInstanceOf[UUID],
+      variants = r.nextString().stripPrefix("{").stripSuffix("}").split(",").map(_.trim).toSeq,
+      selectedVariant = r.nextString()
+    )
+  )
+
+  implicit val getUsersTasksChooseMany: GetResult[UsersTasksChooseMany] = GetResult(r =>
+    UsersTasksChooseMany(
+      userId = r.nextObject().asInstanceOf[UUID],
+      taskId = r.nextObject().asInstanceOf[UUID],
+      variants = r.nextString().stripPrefix("{").stripSuffix("}").split(",").map(_.trim).toSeq,
+      selectedVariants = r.nextString().stripPrefix("{").stripSuffix("}").split(",").map(_.trim).toSeq
+    )
+  )
+
+  implicit val strListParameter: slick.jdbc.SetParameter[Seq[UUID]] =
+    slick.jdbc.SetParameter[Seq[UUID]]{ (param, pointedParameters) =>
+      pointedParameters.setString(f"{${param.mkString(", ")}}")
+    }
 }

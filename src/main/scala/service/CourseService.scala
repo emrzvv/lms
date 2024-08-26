@@ -1,7 +1,8 @@
 package service
 
 import akka.http.scaladsl.model.{StatusCode, StatusCodes}
-import db.model.{Course, CourseRepository, Lesson, Module, ModuleLessonOptShort, ModuleWithLessonsShort, ModuleWithLessonsShortExt, Task, TaskExt, User, UsersCoursesMapping}
+import db.model.{BaseTask, Course, CourseRepository, Lesson, Module, ModuleLessonOptShort, ModuleWithLessonsShort, ModuleWithLessonsShortExt, Task, TaskChooseMany, TaskChooseManyDB, TaskChooseOne, TaskChooseOneDB, TaskExt, TaskFactory, TaskSimpleAnswer, TaskSimpleAnswerDB, User, UsersCoursesMapping, UsersTasks}
+import http.model.{CreateTaskRequest, UpdateTaskRequest}
 import org.json4s.{JObject, JValue}
 import utils.Pimp.RichString
 
@@ -52,12 +53,13 @@ trait CourseService {
   def getRelatedCoursesByUser(userId: UUID): Future[(Seq[Course], Seq[Course])]
   def defaultCourseAccessChecks(userId: UUID, courseId: UUID): Future[(Boolean, Option[Course])]
   def getTasksByLessonId(lessonId: UUID): Future[Seq[Task]]
-  def createTask(lessonId: UUID, question: String, answer: String, points: Int): Future[Int]
-  def updateTask(taskId: UUID, question: String, answer: String, points: Int): Future[Int]
+  def createTask(lessonId: UUID, body: CreateTaskRequest): Future[Int]
+  def updateTask(taskId: UUID, body: UpdateTaskRequest): Future[Int]
   def getTaskById(taskId: UUID): Future[Option[Task]]
   def deleteTask(taskId: UUID): Future[Int]
   def registerUserOnLesson(userId: UUID, lessonId: UUID): Future[Int]
   def getUserTasksByLessonId(userId: UUID, lessonId: UUID): Future[Seq[TaskExt]]
+  def getUserAnswersByTasks(userId: UUID, tasksIds: Seq[UUID]): Future[Seq[UsersTasks]]
   def registerAnswerOnTask(userId: UUID, task: Task, answer: String): Future[Int]
   def checkIfCompletedForEachLesson(userId: UUID, modulesWithLessons: Seq[ModuleWithLessonsShort]): Future[Seq[ModuleWithLessonsShortExt]]
 }
@@ -319,23 +321,87 @@ class CourseServiceImpl(courseRepository: CourseRepository,
   }
 
   override def getTasksByLessonId(lessonId: UUID): Future[Seq[Task]] = {
-    courseRepository.getTasksByLessonId(lessonId)
+    for {
+      tasksGeneral <- courseRepository.getTasksByLessonId(lessonId)
+      tasks <- Future.sequence(tasksGeneral.map { baseTask =>
+        courseRepository.getTaskByIdAndType(baseTask.id, baseTask.taskType).map {
+          case Some(taskDB) => Some(TaskFactory.fromBaseTask(baseTask, taskDB))
+          case None => None
+        }
+      })
+    } yield tasks.flatten
   }
 
-  override def createTask(lessonId: UUID, question: String, answer: String, points: Int): Future[Int] = {
-    val task = Task(
-      id = UUID.randomUUID(),
-      lessonId = lessonId,
-      question = question,
-      suggestedAnswer = answer,
-      points = points
-    )
+  override def createTask(lessonId: UUID, body: CreateTaskRequest): Future[Int] = {
+    val task: Task = body.taskType match {
+      case "TaskSimpleAnswer" =>
+        TaskSimpleAnswer(
+          id = UUID.randomUUID(),
+          lessonId = lessonId,
+          question = body.question,
+          points = body.points,
+          taskType = "simple_answer",
+          suggestedAnswer = body.suggestedAnswer.getOrElse("")
+        )
+      case "TaskChooseOne" =>
+        TaskChooseOne(
+          id = UUID.randomUUID(),
+          lessonId = lessonId,
+          question = body.question,
+          points = body.points,
+          taskType = "choose_one",
+          variants = body.variants.getOrElse(Seq[String]()),
+          suggestedVariant = body.suggestedVariant.getOrElse("")
+        )
+      case "TaskChooseMany" =>
+        TaskChooseMany(
+          id = UUID.randomUUID(),
+          lessonId = lessonId,
+          question = body.question,
+          points = body.points,
+          taskType = "choose_many",
+          variants = body.variants.getOrElse(Seq[String]()),
+          suggestedVariants = body.suggestedVariants.getOrElse(Seq[String]())
+        )
+    }
 
     courseRepository.createTask(task)
   }
 
-  override def updateTask(taskId: UUID, question: String, answer: String, points: Int): Future[Int] = {
-    courseRepository.updateTask(taskId, question, answer, points)
+  override def updateTask(taskId: UUID, body: UpdateTaskRequest): Future[Int] = {
+    val updatedTask = body.taskType match {
+      case "TaskSimpleAnswer" =>
+        TaskSimpleAnswer(
+          id = taskId,
+          lessonId = body.lessonId,
+          question = body.question,
+          points = body.points,
+          taskType = "simple_answer",
+          suggestedAnswer = body.suggestedAnswer.getOrElse("")
+        )
+      case "TaskChooseOne" =>
+        TaskChooseOne(
+          id = taskId,
+          lessonId = body.lessonId,
+          question = body.question,
+          points = body.points,
+          taskType = "choose_one",
+          variants = body.variants.getOrElse(Seq[String]()),
+          suggestedVariant = body.suggestedVariant.getOrElse("")
+        )
+      case "TaskChooseMany" =>
+        TaskChooseMany(
+          id = taskId,
+          lessonId = body.lessonId,
+          question = body.question,
+          points = body.points,
+          taskType = "choose_many",
+          variants = body.variants.getOrElse(Seq[String]()),
+          suggestedVariants = body.suggestedVariants.getOrElse(Seq[String]())
+        )
+    }
+
+    courseRepository.updateTask(updatedTask)
   }
 
   override def getTaskById(taskId: UUID): Future[Option[Task]] = {
@@ -361,7 +427,7 @@ class CourseServiceImpl(courseRepository: CourseRepository,
   }
 
   override def registerAnswerOnTask(userId: UUID, task: Task, answer: String): Future[Int] = {
-    val points = if (task.suggestedAnswer == answer) task.points else 0
+    val points = 0
     for {
       previousAnswerOpt <- courseRepository.getUserTask(userId, task.id)
       result <- previousAnswerOpt match {
@@ -397,5 +463,9 @@ class CourseServiceImpl(courseRepository: CourseRepository,
         }
       }
     }
+  }
+
+  override def getUserAnswersByTasks(userId: UUID, tasksIds: Seq[UUID]): Future[Seq[UsersTasks]] = {
+    courseRepository.getTasksAnswersByUser(userId, tasksIds)
   }
 }
