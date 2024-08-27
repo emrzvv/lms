@@ -78,7 +78,8 @@ trait UserController {
     pathSingleSlash {
       get {
         authenticatedWithRole("user") { user =>
-          complete(home(user))
+          //complete(home(user))
+          redirect("/course/all?limit=9&offset=0", StatusCodes.SeeOther)
         }
       }
     } ~

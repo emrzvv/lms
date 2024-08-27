@@ -3,6 +3,9 @@
 @import db.model.Task
 @import db.model.TaskExt
 @import db.model.ModuleWithLessonsShortExt
+@import db.model.UsersTasksSimpleAnswer
+@import db.model.UsersTasksChooseOne
+@import db.model.UsersTasksChooseMany
 @(currentUser: User,
         course: Course,
         modulesWithLessons: Seq[ModuleWithLessonsShort],
@@ -35,41 +38,102 @@
                         </div>
                         <hr>
                         <div class="task-list mt-5">
-                            <h4>Задачи</h4>
-                            @for(task <- tasks) {
-                                <div class="task-item mt-3">
-                                    <div class="card">
-                                        <div class="card-body d-flex justify-content-between align-items-start">
-                                            <div>
-                                                <p class="card-text">@task.question</p>
-                                                <div class="form-group">
-                                                    <input type="text" class="form-control" id="task-input-@task.taskId"
-                                                           placeholder="@task.userAnswer.getOrElse("Введите ответ")"
-                                                           value="@task.userAnswer.getOrElse("")">
-                                                </div>
-                                                <button class="btn btn-primary mt-2" onclick="submitTask('@task.taskId')">Отправить</button>
-                                                <div class="error-message" id="error-@task.taskId" style="color: red; display: none;"></div>
-                                            </div>
-                                            <div class="task-points border rounded p-2
-                                                @if(task.userPoints == task.points) {
-                                                    border-success text-success
-                                                } else if(task.userAnswer.isDefined && task.userPoints != task.points) {
-                                                    border-danger text-danger
-                                                } else {
-                                                    border-secondary
-                                                }">
-                                                @if(task.userPoints == task.points) {
-                                                    <i class="bi bi-check-circle me-2"></i>
-                                                } else if(task.userAnswer.isDefined && task.userPoints != task.points) {
-                                                    <i class="bi bi-x-circle me-2"></i>
+                        <h4>Задачи</h4>
+                        @for(task <- tasks) {
+                            <div class="task-item mt-3">
+                                <div class="card">
+                                    <div class="card-body d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <p class="card-text">@task.question</p>
+                                            @task.userTask match {
+                                                case Some(userTask: UsersTasksSimpleAnswer) => {
+                                                    <div>
+                                                        <input type="text" class="form-control" id="task-input-@task.taskId"
+                                                               placeholder="Введите ответ"
+                                                               value="@userTask.answer">
+                                                    </div>
                                                 }
-                                                <span>@task.userPoints / @task.points</span>
-                                            </div>
+                                                case Some(userTask: UsersTasksChooseOne) => {
+                                                    <div>
+                                                        @for(variant <- userTask.variants) {
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="radio"
+                                                                       name="task-@task.taskId" id="task-@task.taskId-@variant"
+                                                                       value="@variant" @if(userTask.selectedVariant == variant) { checked }>
+                                                                <label class="form-check-label" for="task-@task.taskId-@variant">
+                                                                    @variant
+                                                                </label>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                                case Some(userTask: UsersTasksChooseMany) => {
+                                                    <div>
+                                                        @for(variant <- userTask.variants) {
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox"
+                                                                       name="task-@task.taskId" id="task-@task.taskId-@variant"
+                                                                       value="@variant" @if(userTask.selectedVariants.contains(variant)) { checked }>
+                                                                <label class="form-check-label" for="task-@task.taskId-@variant">
+                                                                    @variant
+                                                                </label>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                                case None => {
+                                                    @task.taskType match {
+                                                        case "simple_answer" => {
+                                                            <div>
+                                                                <input type="text" class="form-control" id="task-input-@task.taskId"
+                                                                       placeholder="Введите ответ">
+                                                            </div>
+                                                        }
+                                                        case "choose_one" => {
+                                                            <div>
+                                                                @for(variant <- task.variants.get) {
+                                                                    <div class="form-check">
+                                                                        <input class="form-check-input" type="radio"
+                                                                               name="task-@task.taskId" id="task-@task.taskId-@variant"
+                                                                               value="@variant">
+                                                                        <label class="form-check-label" for="task-@task.taskId-@variant">
+                                                                            @variant
+                                                                        </label>
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        }
+                                                        case "choose_many" => {
+                                                            <div>
+                                                                @for(variant <- task.variants.get) {
+                                                                    <div class="form-check">
+                                                                        <input class="form-check-input" type="checkbox"
+                                                                               name="task-@task.taskId" id="task-@task.taskId-@variant"
+                                                                               value="@variant">
+                                                                        <label class="form-check-label" for="task-@task.taskId-@variant">
+                                                                            @variant
+                                                                        </label>
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        }
+                                                        case _ => {
+                                                            <div class="text-muted">Неизвестный тип задачи</div>
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            <button class="btn btn-primary mt-2" onclick="submitTask('@task.taskId')">Отправить</button>
+                                            <div class="error-message" id="error-@task.taskId" style="color: red; display: none;"></div>
+                                        </div>
+                                        <div class="task-points border rounded p-2">
+                                            <span>@task.userPoints / @task.points</span>
                                         </div>
                                     </div>
                                 </div>
-                            }
-                        </div>
+                            </div>
+                        }
+                    </div>
                     </div>
                 </div>
             </div>

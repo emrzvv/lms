@@ -18,6 +18,7 @@ trait UserService {
   def updateUser(updatedUser: User): Future[Int]
   def getById(id: UUID): Future[Option[User]]
   def searchUsers(query: String): Future[Seq[User]]
+  def getEncryptedPassword(password: String): String
 }
 
 object UserServiceImpl {
@@ -60,5 +61,12 @@ class UserServiceImpl(userRepository: UserRepository, executionContext: Executio
 
   def searchUsers(query: String): Future[Seq[User]] = {
     userRepository.matchByUsernameOrEmail(query)
+  }
+
+  override def getEncryptedPassword(password: String): String = {
+    password.bcryptSafeBounded match {
+      case Success(encrypted) => encrypted
+      case Failure(exception) => exception.toString
+    }
   }
 }

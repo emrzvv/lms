@@ -34,14 +34,22 @@ case class UpdateLessonContentRequest(content: JValue)
 
 case class CreateTaskRequest(lessonId: UUID,
                              question: String,
-                             suggestedAnswer: String,
-                             points: Int)
+                             taskType: String,
+                             points: Int,
+                             suggestedAnswer: Option[String],
+                             variants: Option[Seq[String]],
+                             suggestedVariant: Option[String],
+                             suggestedVariants: Option[Seq[String]])
 
 case class UpdateTaskRequest(taskId: UUID,
                              lessonId: UUID,
                              question: String,
-                             suggestedAnswer: String,
-                             points: Int)
+                             taskType: String,
+                             points: Int,
+                             suggestedAnswer: Option[String],
+                             variants: Option[Seq[String]],
+                             suggestedVariant: Option[String],
+                             suggestedVariants: Option[Seq[String]])
 
 case class DeleteTaskRequest(id: UUID)
 

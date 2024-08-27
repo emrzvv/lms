@@ -377,7 +377,7 @@ trait CourseController {
                     ableToEdit <- courseService.isAbleToEdit(tutor.id, courseId) if ableToEdit
                     courseOpt <- courseService.getById(courseId) if courseOpt.nonEmpty
                     lessonOpt <- courseService.getLesson(lessonId) if lessonOpt.nonEmpty
-                    result <- courseService.createTask(lessonId, body.question, body.suggestedAnswer, body.points)
+                    result <- courseService.createTask(lessonId, body)
                   } yield result
                 }(r => complete(StatusCodes.OK))
               }
@@ -392,7 +392,7 @@ trait CourseController {
                       courseOpt <- courseService.getById(courseId) if courseOpt.nonEmpty
                       lessonOpt <- courseService.getLesson(lessonId) if lessonOpt.nonEmpty
                       taskOpt <- courseService.getTaskById(body.taskId) if taskOpt.nonEmpty
-                      result <- courseService.updateTask(body.taskId, body.question, body.suggestedAnswer, body.points)
+                      result <- courseService.updateTask(body.taskId, body)
                     } yield result
                   }(r => complete(StatusCodes.OK))
                 }
@@ -461,8 +461,15 @@ trait CourseController {
                   lesson = lessonOpt.get
                   content = compact(render(lesson.content))
                   tasks <- courseService.getUserTasksByLessonId(user.id, lessonId)
+                  userAnswers <- courseService.getUserAnswersByTasks(user.id, tasks.map(_.taskId))
+
+                  tasksWithUserAnswers = tasks.map { task =>
+                    val userAnswerOpt = userAnswers.find(_.taskId == task.taskId)
+                    task.copy(userTask = userAnswerOpt)
+                  }
+
                   register <- courseService.registerUserOnLesson(user.id, lessonId)
-                } yield (course, modulesWithLessonsShort, lesson, content, tasks, modulesWithLessonsChecked)
+                } yield (course, modulesWithLessonsShort, lesson, content, tasksWithUserAnswers, modulesWithLessonsChecked)
               } { case (course, modulesWithLessonsShort, _lesson, content, tasks, modulesWithLessonsChecked) =>
                 complete(lesson(user, course, modulesWithLessonsShort, _lesson, content, tasks, modulesWithLessonsChecked))
               }

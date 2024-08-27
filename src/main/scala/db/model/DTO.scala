@@ -30,7 +30,8 @@ case class ModuleWithLessonsShortExt(id: UUID,
 case class TaskExt(taskId: UUID,
                    userId: Option[UUID],
                    question: String,
-                   suggestedAnswer: String,
-                   userAnswer: Option[String],
+                   taskType: String,
                    points: Int,
-                   userPoints: Int = 0)
+                   userPoints: Int = 0,
+                   userTask: Option[UsersTasks] = None,
+                   variants: Option[Seq[String]] = None)

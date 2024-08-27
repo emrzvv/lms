@@ -58,14 +58,16 @@ trait CourseRepository {
   def updateLessonContent(id: UUID, content: JValue): Future[Int]
   def getCoursesByUser(id: UUID): Future[Seq[Course]]
   def getCreatedCoursesByUser(id: UUID): Future[Seq[Course]]
-  def getTasksByLessonId(id: UUID): Future[Seq[Task]]
+  def getTasksByLessonId(id: UUID): Future[Seq[BaseTask]]
   def createTask(task: Task): Future[Int]
-  def updateTask(taskId: UUID, question: String, answer: String, points: Int): Future[Int]
-  def getTaskById(taskId: UUID): Future[Option[Task]]
+  def updateTask(task: Task): Future[Int]
+  def getTaskById(taskId: UUID): Future[Option[BaseTask]]
+  def getTaskByIdAndType(taskId: UUID, taskType: String): Future[Option[TaskDB]]
   def deleteTask(taskId: UUID): Future[Int]
   def getUserLessonMapping(userId: UUID, lessonId: UUID): Future[Option[UsersLessonsMapping]]
   def registerUserOnLesson(userId: UUID, lessonId: UUID): Future[Int]
   def getLessonTasksByUser(userId: UUID, lessonId: UUID): Future[Seq[TaskExt]]
+  def getTasksAnswersByUser(userId: UUID, tasks: Seq[UUID]): Future[Seq[UsersTasks]]
   def getUserTask(userId: UUID, taskId: UUID): Future[Option[UsersTasksMapping]]
   def updateUserTaskAnswer(userId: UUID, taskId: UUID, answer: String, points: Int): Future[Int]
   def registerUserTaskAnswer(userId: UUID, taskId: UUID, answer: String, points: Int): Future[Int]
@@ -465,51 +467,110 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
     db.run(query)
   }
 
-  override def getTasksByLessonId(id: UUID): Future[Seq[Task]] = {
+  override def getTasksByLessonId(id: UUID): Future[Seq[BaseTask]] = {
     val query =
       sql"""
            select * from tasks
            where lesson_id = ${id.toString}::uuid
-         """.as[Task]
+         """.as[BaseTask]
 
     db.run(query)
   }
 
   override def createTask(task: Task): Future[Int] = {
-    val query =
+    val queryBaseTask =
       sqlu"""
-            insert into tasks (id, lesson_id, question, suggested_answer, points) values
+            insert into tasks (id, lesson_id, question, points, task_type) values
               (
                 ${task.id.toString}::uuid,
                 ${task.lessonId.toString}::uuid,
                 ${task.question},
-                ${task.suggestedAnswer},
-                ${task.points}
+                ${task.points},
+                ${task.taskType}
               )
           """
+    val querySubTask = task match {
+      case t: TaskSimpleAnswer =>
+        sqlu"""
+          insert into tasks_simple_answer (id, suggested_answer) values
+            (
+              ${t.id.toString}::uuid,
+              ${t.suggestedAnswer}
+            )
+            """
+      case t: TaskChooseOne =>
+        sqlu"""
+          insert into tasks_choose_one (id, variants, suggested_variant) values
+            (
+              ${t.id.toString}::uuid,
+              ${t.variants.mkString("{", ",", "}")}::text[],
+              ${t.suggestedVariant}
+            )
+            """
+      case t: TaskChooseMany =>
+        sqlu"""
+              insert into tasks_choose_many (id, variants, suggested_variants) values
+              (
+                ${t.id.toString}::uuid,
+                ${t.variants.mkString("{", ",", "}")}::text[],
+                ${t.suggestedVariants.mkString("{", ",", "}")}::text[]
+              )
+            """
+    }
 
-    db.run(query)
+    val query = for {
+      _ <- queryBaseTask
+      _ <- querySubTask
+    } yield 2
+    db.run(query.transactionally)
   }
 
-  override def updateTask(taskId: UUID, question: String, answer: String, points: Int): Future[Int] = {
-    val query =
+  override def updateTask(task: Task): Future[Int] = {
+    val queryBaseTask =
       sqlu"""
             update tasks
-            set question = ${question},
-                suggested_answer = ${answer},
-                points = ${points}
-            where id = ${taskId.toString}::uuid
+            set question = ${task.question},
+                points = ${task.points}
+            where id = ${task.id.toString}::uuid
           """
 
-    db.run(query)
+    val querySubTask = task match {
+      case t: TaskSimpleAnswer =>
+        sqlu"""
+          update tasks_simple_answer
+          set suggested_answer = ${t.suggestedAnswer}
+          where id = ${task.id.toString}::uuid
+            """
+      case t: TaskChooseOne =>
+        sqlu"""
+          update tasks_choose_one
+          set variants =  ${t.variants.mkString("{", ",", "}")}::text[],
+              suggested_variant = ${t.suggestedVariant}
+              where id = ${task.id.toString}::uuid
+            """
+      case t: TaskChooseMany =>
+        sqlu"""
+              update tasks_choose_many
+              set variants = ${t.variants.mkString("{", ",", "}")}::text[],
+                  suggested_variants = ${t.suggestedVariants.mkString("{", ",", "}")}::text[]
+                  where id = ${task.id.toString}::uuid
+            """
+    }
+
+
+    val query = for {
+      _ <- queryBaseTask
+      _ <- querySubTask
+    } yield 2
+    db.run(query.transactionally)
   }
 
-  override def getTaskById(taskId: UUID): Future[Option[Task]] = {
+  override def getTaskById(taskId: UUID): Future[Option[BaseTask]] = {
     val query =
       sql"""
            select * from tasks
            where id = ${taskId.toString}::uuid
-         """.as[Task].headOption
+         """.as[BaseTask].headOption
 
     db.run(query)
   }
@@ -537,11 +598,10 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
   override def registerUserOnLesson(userId: UUID, lessonId: UUID): Future[Int] = {
     val query =
       sqlu"""
-            insert into users_lessons (user_id, lesson_id, points) values
+            insert into users_lessons (user_id, lesson_id) values
             (
               ${userId.toString}::uuid,
-              ${lessonId.toString}::uuid,
-              0
+              ${lessonId.toString}::uuid
             )
           """
 
@@ -549,23 +609,36 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
   }
 
   override def getLessonTasksByUser(userId: UUID, lessonId: UUID): Future[Seq[TaskExt]] = {
-    val maybeRegisteredUserTasks = sql"""
-           select t.id, ut.user_id, t.question, t.suggested_answer, ut.answer, t.points, ut.points from tasks t
-            left join users_tasks ut on t.id = ut.task_id
-            where ut.user_id = ${userId.toString}::uuid and t.lesson_id = ${lessonId.toString}::uuid
-         """.as[TaskExt]
+    val simpleTasksQuery = sql"""
+      select t.id, ut.user_id, t.question, t.task_type, t.points, coalesce(ut.points, 0) as user_points, null as variants
+      from tasks t
+      left join users_tasks ut on t.id = ut.task_id
+      where t.lesson_id = ${lessonId.toString}::uuid and t.task_type = 'simple_answer'
+    """.as[TaskExt]
 
-    val notRegisteredUserTasks =
-      sql"""
-        select t.id, ut.user_id, t.question, t.suggested_answer, ut.answer, t.points, ut.points from tasks t
-            left join users_tasks ut on t.id = ut.task_id
-            where t.lesson_id = ${lessonId.toString}::uuid
-         """.as[TaskExt]
+    val chooseOneTasksQuery = sql"""
+      select t.id, ut.user_id, t.question, t.task_type, t.points, coalesce(ut.points, 0) as user_points, tc.variants
+      from tasks t
+      left join users_tasks ut on t.id = ut.task_id
+      join tasks_choose_one tc on t.id = tc.id
+      where t.lesson_id = ${lessonId.toString}::uuid and t.task_type = 'choose_one'
+    """.as[TaskExt]
+
+    val chooseManyTasksQuery = sql"""
+      select t.id, ut.user_id, t.question, t.task_type, t.points, coalesce(ut.points, 0) as user_points, tc.variants
+      from tasks t
+      left join users_tasks ut on t.id = ut.task_id
+      join tasks_choose_many tc on t.id = tc.id
+      where t.lesson_id = ${lessonId.toString}::uuid and t.task_type = 'choose_many'
+    """.as[TaskExt]
+
+    // Объединяем результаты всех запросов
     val query =
       for {
-        a <- maybeRegisteredUserTasks
-        b <- notRegisteredUserTasks
-      } yield (a ++ b).distinctBy(_.taskId)
+        simpleTasks <- simpleTasksQuery
+        chooseOneTasks <- chooseOneTasksQuery
+        chooseManyTasks <- chooseManyTasksQuery
+      } yield (simpleTasks ++ chooseOneTasks ++ chooseManyTasks).distinctBy(_.taskId)
 
     db.run(query.transactionally)
   }
@@ -605,5 +678,52 @@ class CourseRepositoryImpl(db: Database, profile: MyPostgresProfile, tables: Tab
           """
 
     db.run(query)
+  }
+
+  override def getTaskByIdAndType(taskId: UUID, taskType: String): Future[Option[TaskDB]] = {
+    val query = taskType match {
+      case "simple_answer" => sql"""
+             select * from tasks_simple_answer
+             where id = ${taskId.toString}::uuid
+           """.as[TaskSimpleAnswerDB].headOption
+      case "choose_one" => sql"""
+             select * from tasks_choose_one
+             where id = ${taskId.toString}::uuid""".as[TaskChooseOneDB].headOption
+      case "choose_many" => sql"""
+             select * from tasks_choose_many
+             where id = ${taskId.toString}::uuid""".as[TaskChooseManyDB].headOption
+    }
+
+    db.run(query)
+  }
+
+  override def getTasksAnswersByUser(userId: UUID, tasks: Seq[UUID]): Future[Seq[UsersTasks]] = {
+    val querySimpleAnswer = sql"""
+      select user_id, task_id, answer
+      from users_tasks_simple_answer
+      where user_id = ${userId.toString}::uuid and task_id = any(${tasks}::uuid[])
+    """.as[UsersTasksSimpleAnswer]
+
+    val queryChooseOne = sql"""
+      select u.user_id, u.task_id, u.selected_variant, t.variants::text[] as variants
+      from users_tasks_choose_one u
+      join tasks_choose_one t on u.task_id = t.id
+      where u.user_id = ${userId.toString}::uuid and u.task_id = any(${tasks}::uuid[])
+    """.as[UsersTasksChooseOne]
+
+    val queryChooseMany = sql"""
+      select u.user_id, u.task_id, u.selected_variants::text[], t.variants::text[] as variants
+      from users_tasks_choose_many u
+      join tasks_choose_many t on u.task_id = t.id
+      where u.user_id = ${userId.toString}::uuid and u.task_id = any(${tasks}::uuid[])
+    """.as[UsersTasksChooseMany]
+
+    val combined = for {
+      simple <- querySimpleAnswer
+      chooseOne <- queryChooseOne
+      chooseMany <- queryChooseMany
+    } yield (simple ++ chooseOne ++ chooseMany)
+
+    db.run(combined.transactionally)
   }
 }
